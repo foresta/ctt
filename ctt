@@ -1,0 +1,424 @@
+#!/bin/bash
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
+
+if ! command -v fzf &> /dev/null; then
+    echo "エラー: fzf がインストールされていません。" >&2
+    exit 1
+fi
+
+select_repo() {
+    local repo
+    repo=$(find . -maxdepth 5 -type d -name ".git" -prune -exec dirname {} \; | fzf --prompt="Select Repository> ")
+
+    if [ -z "$repo" ]; then
+        echo "キャンセルされました。" >&2
+        exit 1
+    fi
+
+    echo "$repo"
+}
+
+select_branch() {
+    local out query selected
+
+    out=$({
+        git branch --format="%(refname:short)"
+        git branch -r --format="%(refname:short)" | sed 's|^[^/]*/||'
+    } | grep -v '^HEAD$' | sort -u | fzf --print-query --prompt="Select or Type Branch for Worktree> ")
+
+    query=$(echo "$out" | head -n 1)
+    selected=$(echo "$out" | tail -n +2 | head -n 1)
+
+    if [ -n "$selected" ]; then
+        echo "$selected"
+        echo "existing"
+    elif [ -n "$query" ]; then
+        echo "$query"
+        echo "new"
+    else
+        echo "キャンセルされました。" >&2
+        exit 1
+    fi
+}
+
+ask_branch_action() {
+    local action
+    action=$(printf "このブランチをチェックアウト\nこのブランチから新しいブランチを作成" | fzf --prompt="ブランチの操作を選択> ")
+
+    case "$action" in
+        "このブランチをチェックアウト")
+            echo "checkout"
+            ;;
+        "このブランチから新しいブランチを作成")
+            echo "new_from_base"
+            ;;
+        *)
+            echo "キャンセルされました。" >&2
+            exit 1
+            ;;
+    esac
+}
+
+input_new_branch_name() {
+    local name
+    read -rp "新しいブランチ名を入力> " name
+    if [ -z "$name" ]; then
+        echo "キャンセルされました。" >&2
+        exit 1
+    fi
+    echo "$name"
+}
+
+create_worktree() {
+    local workdir="$1"
+    shift
+
+    if [ -d "${workdir}" ]; then
+        read -rp "ディレクトリが既に存在します: ${workdir} — 移動して作業しますか？ [y/N] " yn
+        if [[ "$yn" =~ ^[Yy]$ ]]; then
+            echo "existing:${workdir}"
+            return
+        else
+            echo "キャンセルされました。" >&2
+            exit 1
+        fi
+    fi
+
+    git worktree add "${workdir}" "$@" >&2
+    echo "new:${workdir}"
+}
+
+link_ignored_files() {
+    local repo_dir="$1"
+    local workdir="$2"
+    local ignore_file="${SCRIPT_DIR}/.worktree-link-ignore"
+    local skip_patterns=()
+
+    # .worktree-link-ignore があればスキップパターンを読み込む
+    if [ -f "$ignore_file" ]; then
+        while IFS= read -r line; do
+            [[ "$line" =~ ^[[:space:]]*# ]] && continue
+            [[ -z "${line// }" ]] && continue
+            skip_patterns+=("$line")
+        done < "$ignore_file"
+    fi
+
+    local linked=0
+    while IFS= read -r path; do
+        [ -z "$path" ] && continue
+        path="${path%/}"
+
+        local src="${repo_dir}/${path}"
+        local dst="${workdir}/${path}"
+
+        [ -e "$src" ] || continue
+
+        # .worktree-link-ignore のパターンに一致したらスキップ
+        local skip=false
+        for pattern in "${skip_patterns[@]}"; do
+            if [[ "$path" == $pattern ]]; then
+                skip=true
+                break
+            fi
+        done
+        $skip && continue
+
+        # 既に存在する場合はスキップ
+        if [ -e "$dst" ] || [ -L "$dst" ]; then
+            continue
+        fi
+
+        mkdir -p "$(dirname "$dst")"
+        ln -s "$src" "$dst"
+        linked=$((linked + 1))
+        echo "リンク作成: ${path}" >&2
+    done < <(cd "$repo_dir" && git ls-files --others --ignored --exclude-standard --directory 2>/dev/null)
+
+    if [ "$linked" -gt 0 ]; then
+        echo "${linked} 個のシンボリックリンクを作成しました。" >&2
+    fi
+}
+
+open_editor() {
+    local repo_name="$1"
+    local workdir="$2"
+    local branch="$3"
+    local resume="${4:-false}"
+    local tmux_window_name="${repo_name}:${branch}"
+    local terminal_title="Claude: ${repo_name} [${branch}]"
+    local claude_cmd="ClaudeCode"
+    if [ "$resume" = "true" ]; then
+        claude_cmd="ClaudeCode --continue"
+    fi
+
+    if [ -n "$TMUX" ]; then
+        echo "🚀 tmux の新しいウィンドウで起動します..."
+        tmux new-window -n "$tmux_window_name" -c "$workdir" \
+            "printf '\\033]0;%s\\007' \"$terminal_title\"; nvim . -c \"$claude_cmd\""
+    else
+        echo "⚠️ tmux セッション外のため、現在のターミナルで起動します..."
+        cd "$workdir" || exit 1
+        printf '\033]0;%s\007' "$terminal_title"
+        nvim . -c "$claude_cmd"
+    fi
+}
+
+get_task_status() {
+    local workdir="$1"
+    local branch
+    branch=$(git -C "$workdir" rev-parse --abbrev-ref HEAD 2>/dev/null)
+
+    # 未コミットの変更数
+    local uncommitted
+    uncommitted=$(git -C "$workdir" status --porcelain 2>/dev/null | wc -l | tr -d ' ')
+
+    # main に対するコミット数
+    local commits_ahead
+    commits_ahead=$(git -C "$workdir" log --oneline origin/main..HEAD 2>/dev/null | wc -l | tr -d ' ')
+
+    # PR 状態 (gh CLI)
+    local pr_state=""
+    local pr_url=""
+    local remote_url
+    remote_url=$(git -C "$workdir" remote get-url origin 2>/dev/null)
+    if [ -n "$remote_url" ]; then
+        local repo_slug
+        repo_slug=$(echo "$remote_url" | sed -E 's|.*github\.com[:/]||;s|\.git$||')
+        local pr_json
+        pr_json=$(gh pr list --repo "$repo_slug" --head "$branch" --state all --json state,url --limit 1 2>/dev/null)
+        if [ -n "$pr_json" ] && [ "$pr_json" != "[]" ]; then
+            pr_state=$(echo "$pr_json" | head -1 | sed -E 's/.*"state":"([^"]+)".*/\1/')
+            pr_url=$(echo "$pr_json" | head -1 | sed -E 's/.*"url":"([^"]+)".*/\1/')
+        fi
+    fi
+
+    # ステータス判定
+    local status
+    if [ "$pr_state" = "MERGED" ]; then
+        status="merged"
+    elif [ "$pr_state" = "OPEN" ]; then
+        status="pr-open"
+    elif [ "$uncommitted" -gt 0 ] || [ "$commits_ahead" -gt 0 ]; then
+        status="in-progress"
+    else
+        status="no-changes"
+    fi
+
+    echo -e "${status}\t${branch}\t${uncommitted} changed\t${commits_ahead} commits\t${pr_url}"
+}
+
+WORKTREE_DIR="~/work/worktrees"
+
+usage() {
+    echo "Usage: ctt <command>" >&2
+    echo "" >&2
+    echo "Commands:" >&2
+    echo "  new    worktree を作成して ClaudeCode を起動" >&2
+    echo "  ls     作業中タスクの一覧を表示" >&2
+    echo "  open   タスクを選択してエディタで開く" >&2
+    echo "  status タスクの実装状況を表示 (--all で全タスク)" >&2
+    echo "  done   タスクを完了して worktree を削除" >&2
+    exit 1
+}
+
+cmd_ls() {
+    local dir
+    dir=$(eval echo "$WORKTREE_DIR")
+
+    if [ ! -d "$dir" ]; then
+        echo "worktree ディレクトリが存在しません: $dir" >&2
+        exit 1
+    fi
+
+    local found=false
+    for entry in "$dir"/*/; do
+        [ -d "$entry" ] || continue
+        found=true
+        basename "$entry"
+    done
+
+    if [ "$found" = false ]; then
+        echo "作業中のタスクはありません。" >&2
+    fi
+}
+
+cmd_status() {
+    local dir
+    dir=$(eval echo "$WORKTREE_DIR")
+
+    if [ "$1" = "--all" ]; then
+        cmd_ls | while read -r task; do
+            local workdir="${dir}/${task}"
+            local info
+            info=$(get_task_status "$workdir")
+            echo -e "${task}\t${info}"
+        done
+        return
+    fi
+
+    local selected
+    selected=$(cmd_ls | fzf --prompt="Select Task> ")
+    if [ -z "$selected" ]; then
+        echo "キャンセルされました。" >&2
+        exit 1
+    fi
+
+    local workdir="${dir}/${selected}"
+    echo "Task: ${selected}" >&2
+    echo "---" >&2
+    get_task_status "$workdir"
+}
+
+cmd_done() {
+    local dir
+    dir=$(eval echo "$WORKTREE_DIR")
+
+    local selected
+    selected=$(cmd_ls | fzf --prompt="Select Task to Complete> ")
+    if [ -z "$selected" ]; then
+        echo "キャンセルされました。" >&2
+        exit 1
+    fi
+
+    local workdir="${dir}/${selected}"
+
+    # ステータス表示
+    echo "Task: ${selected}" >&2
+    local status_line
+    status_line=$(get_task_status "$workdir")
+    echo "$status_line" >&2
+    echo "---" >&2
+
+    local status
+    status=$(echo "$status_line" | cut -f1)
+
+    # ステータスに応じた確認
+    case "$status" in
+        merged|no-changes)
+            read -rp "この worktree を削除しますか？ [y/N] " yn
+            ;;
+        in-progress)
+            echo "⚠️  未コミットまたは未マージの変更があります。" >&2
+            read -rp "本当に削除しますか？ [y/N] " yn
+            ;;
+        pr-open)
+            echo "⚠️  PR がまだオープンです。" >&2
+            read -rp "本当に削除しますか？ [y/N] " yn
+            ;;
+    esac
+
+    if [[ ! "$yn" =~ ^[Yy]$ ]]; then
+        echo "キャンセルされました。" >&2
+        exit 1
+    fi
+
+    # worktree 削除（親リポジトリから実行）
+    local git_dir
+    git_dir=$(git -C "$workdir" rev-parse --git-common-dir 2>/dev/null)
+    if [ -z "$git_dir" ]; then
+        echo "エラー: git リポジトリ情報を取得できません: ${workdir}" >&2
+        exit 1
+    fi
+    git --git-dir="$git_dir" worktree remove "$workdir" --force
+    echo "タスクを完了しました: ${selected}" >&2
+}
+
+cmd_open() {
+    local dir
+    dir=$(eval echo "$WORKTREE_DIR")
+
+    if [ ! -d "$dir" ]; then
+        echo "worktree ディレクトリが存在しません: $dir" >&2
+        exit 1
+    fi
+
+    local selected
+    selected=$(cmd_ls | fzf --prompt="Select Task> ")
+
+    if [ -z "$selected" ]; then
+        echo "キャンセルされました。" >&2
+        exit 1
+    fi
+
+    local workdir="${dir}/${selected}"
+    local repo_name="${selected%%__*}"
+    local branch="${selected#*__}"
+
+    open_editor "$repo_name" "$workdir" "$branch" "true"
+}
+
+cmd_new() {
+    cd ~/work
+
+    selected_repo=$(select_repo)
+    cd "$selected_repo"
+
+    repo_name=$(basename "$(pwd)")
+
+    branch_info=$(select_branch)
+    branch=$(echo "$branch_info" | head -n 1)
+    branch_type=$(echo "$branch_info" | tail -n 1)
+
+    git_args=()
+    target_branch="$branch"
+
+    if [ "$branch_type" = "existing" ]; then
+        action=$(ask_branch_action)
+        if [ "$action" = "new_from_base" ]; then
+            new_name=$(input_new_branch_name)
+            target_branch="$new_name"
+            git_args=(-b "$target_branch" "$branch")
+        else
+            git_args=("$branch")
+        fi
+    else
+        git_args=(-b "$branch")
+    fi
+
+    result=$(create_worktree ${WORKTREE_DIR}/"${repo_name}__${target_branch}" "${git_args[@]}")
+    worktree_status="${result%%:*}"
+    workdir="${result#*:}"
+
+    link_ignored_files "$(pwd)" "$workdir"
+
+    local resume="false"
+    if [ "$worktree_status" = "existing" ]; then
+        resume="true"
+    fi
+
+    open_editor "$repo_name" "$workdir" "$target_branch" "$resume"
+}
+
+main() {
+    local cmd="${1:-}"
+    case "$cmd" in
+        new)
+            shift
+            cmd_new "$@"
+            ;;
+        ls)
+            shift
+            cmd_ls "$@"
+            ;;
+        open)
+            shift
+            cmd_open "$@"
+            ;;
+        status)
+            shift
+            cmd_status "$@"
+            ;;
+        done)
+            shift
+            cmd_done "$@"
+            ;;
+        *)
+            usage
+            ;;
+    esac
+}
+
+main "$@"
