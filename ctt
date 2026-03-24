@@ -5,7 +5,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
 
 if ! command -v fzf &> /dev/null; then
-    echo "エラー: fzf がインストールされていません。" >&2
+    echo "Error: fzf is not installed." >&2
     exit 1
 fi
 
@@ -14,7 +14,7 @@ select_repo() {
     repo=$(find . -maxdepth 5 -type d -name ".git" -prune -exec dirname {} \; | fzf --prompt="Select Repository> ")
 
     if [ -z "$repo" ]; then
-        echo "キャンセルされました。" >&2
+        echo "Cancelled." >&2
         exit 1
     fi
 
@@ -39,24 +39,24 @@ select_branch() {
         echo "$query"
         echo "new"
     else
-        echo "キャンセルされました。" >&2
+        echo "Cancelled." >&2
         exit 1
     fi
 }
 
 ask_branch_action() {
     local action
-    action=$(printf "このブランチをチェックアウト\nこのブランチから新しいブランチを作成" | fzf --prompt="ブランチの操作を選択> ")
+    action=$(printf "Checkout this branch\nCreate new branch from this branch" | fzf --prompt="Select action> ")
 
     case "$action" in
-        "このブランチをチェックアウト")
+        "Checkout this branch")
             echo "checkout"
             ;;
-        "このブランチから新しいブランチを作成")
+        "Create new branch from this branch")
             echo "new_from_base"
             ;;
         *)
-            echo "キャンセルされました。" >&2
+            echo "Cancelled." >&2
             exit 1
             ;;
     esac
@@ -64,9 +64,9 @@ ask_branch_action() {
 
 input_new_branch_name() {
     local name
-    read -rp "新しいブランチ名を入力> " name
+    read -rp "New branch name> " name
     if [ -z "$name" ]; then
-        echo "キャンセルされました。" >&2
+        echo "Cancelled." >&2
         exit 1
     fi
     echo "$name"
@@ -77,12 +77,12 @@ create_worktree() {
     shift
 
     if [ -d "${workdir}" ]; then
-        read -rp "ディレクトリが既に存在します: ${workdir} — 移動して作業しますか？ [y/N] " yn
+        read -rp "Directory already exists: ${workdir} — Use existing worktree? [y/N] " yn
         if [[ "$yn" =~ ^[Yy]$ ]]; then
             echo "existing:${workdir}"
             return
         else
-            echo "キャンセルされました。" >&2
+            echo "Cancelled." >&2
             exit 1
         fi
     fi
@@ -97,7 +97,7 @@ link_ignored_files() {
     local ignore_file="${SCRIPT_DIR}/.worktree-link-ignore"
     local skip_patterns=()
 
-    # .worktree-link-ignore があればスキップパターンを読み込む
+    # Load skip patterns from .worktree-link-ignore if it exists
     if [ -f "$ignore_file" ]; then
         while IFS= read -r line; do
             [[ "$line" =~ ^[[:space:]]*# ]] && continue
@@ -116,7 +116,7 @@ link_ignored_files() {
 
         [ -e "$src" ] || continue
 
-        # .worktree-link-ignore のパターンに一致したらスキップ
+        # Skip if matching a .worktree-link-ignore pattern
         local skip=false
         for pattern in "${skip_patterns[@]}"; do
             if [[ "$path" == $pattern ]]; then
@@ -126,7 +126,7 @@ link_ignored_files() {
         done
         $skip && continue
 
-        # 既に存在する場合はスキップ
+        # Skip if already exists
         if [ -e "$dst" ] || [ -L "$dst" ]; then
             continue
         fi
@@ -134,11 +134,11 @@ link_ignored_files() {
         mkdir -p "$(dirname "$dst")"
         ln -s "$src" "$dst"
         linked=$((linked + 1))
-        echo "リンク作成: ${path}" >&2
+        echo "Linked: ${path}" >&2
     done < <(cd "$repo_dir" && git ls-files --others --ignored --exclude-standard --directory 2>/dev/null)
 
     if [ "$linked" -gt 0 ]; then
-        echo "${linked} 個のシンボリックリンクを作成しました。" >&2
+        echo "Linked ${linked} ignored file(s) into worktree." >&2
     fi
 }
 
@@ -155,11 +155,11 @@ open_editor() {
     fi
 
     if [ -n "$TMUX" ]; then
-        echo "🚀 tmux の新しいウィンドウで起動します..."
+        echo "Opening in new tmux window..."
         tmux new-window -n "$tmux_window_name" -c "$workdir" \
             "printf '\\033]0;%s\\007' \"$terminal_title\"; nvim . -c \"$claude_cmd\""
     else
-        echo "⚠️ tmux セッション外のため、現在のターミナルで起動します..."
+        echo "Warning: not in tmux session. Opening in current terminal..."
         cd "$workdir" || exit 1
         printf '\033]0;%s\007' "$terminal_title"
         nvim . -c "$claude_cmd"
@@ -171,15 +171,15 @@ get_task_status() {
     local branch
     branch=$(git -C "$workdir" rev-parse --abbrev-ref HEAD 2>/dev/null)
 
-    # 未コミットの変更数
+    # Count uncommitted changes
     local uncommitted
     uncommitted=$(git -C "$workdir" status --porcelain 2>/dev/null | wc -l | tr -d ' ')
 
-    # main に対するコミット数
+    # Commits ahead of main
     local commits_ahead
     commits_ahead=$(git -C "$workdir" log --oneline origin/main..HEAD 2>/dev/null | wc -l | tr -d ' ')
 
-    # PR 状態 (gh CLI)
+    # PR status (gh CLI)
     local pr_state=""
     local pr_url=""
     local remote_url
@@ -195,7 +195,7 @@ get_task_status() {
         fi
     fi
 
-    # ステータス判定
+    # Determine status
     local status
     if [ "$pr_state" = "MERGED" ]; then
         status="merged"
@@ -216,11 +216,11 @@ usage() {
     echo "Usage: ctt <command>" >&2
     echo "" >&2
     echo "Commands:" >&2
-    echo "  new    worktree を作成して ClaudeCode を起動" >&2
-    echo "  ls     作業中タスクの一覧を表示" >&2
-    echo "  open   タスクを選択してエディタで開く" >&2
-    echo "  status タスクの実装状況を表示 (--all で全タスク)" >&2
-    echo "  done   タスクを完了して worktree を削除" >&2
+    echo "  new    Create a worktree and launch ClaudeCode" >&2
+    echo "  ls     List active tasks" >&2
+    echo "  open   Open a task in the editor" >&2
+    echo "  status Show task status (--all for all tasks)" >&2
+    echo "  done   Complete a task and remove its worktree" >&2
     exit 1
 }
 
@@ -229,7 +229,7 @@ cmd_ls() {
     dir=$(eval echo "$WORKTREE_DIR")
 
     if [ ! -d "$dir" ]; then
-        echo "worktree ディレクトリが存在しません: $dir" >&2
+        echo "Worktree directory not found: $dir" >&2
         exit 1
     fi
 
@@ -241,7 +241,7 @@ cmd_ls() {
     done
 
     if [ "$found" = false ]; then
-        echo "作業中のタスクはありません。" >&2
+        echo "No active tasks." >&2
     fi
 }
 
@@ -262,7 +262,7 @@ cmd_status() {
     local selected
     selected=$(cmd_ls | fzf --prompt="Select Task> ")
     if [ -z "$selected" ]; then
-        echo "キャンセルされました。" >&2
+        echo "Cancelled." >&2
         exit 1
     fi
 
@@ -279,13 +279,13 @@ cmd_done() {
     local selected
     selected=$(cmd_ls | fzf --prompt="Select Task to Complete> ")
     if [ -z "$selected" ]; then
-        echo "キャンセルされました。" >&2
+        echo "Cancelled." >&2
         exit 1
     fi
 
     local workdir="${dir}/${selected}"
 
-    # ステータス表示
+    # Show status
     echo "Task: ${selected}" >&2
     local status_line
     status_line=$(get_task_status "$workdir")
@@ -295,35 +295,35 @@ cmd_done() {
     local status
     status=$(echo "$status_line" | cut -f1)
 
-    # ステータスに応じた確認
+    # Confirm based on status
     case "$status" in
         merged|no-changes)
-            read -rp "この worktree を削除しますか？ [y/N] " yn
+            read -rp "Remove this worktree? [y/N] " yn
             ;;
         in-progress)
-            echo "⚠️  未コミットまたは未マージの変更があります。" >&2
-            read -rp "本当に削除しますか？ [y/N] " yn
+            echo "Warning: uncommitted or unmerged changes exist." >&2
+            read -rp "Are you sure you want to remove it? [y/N] " yn
             ;;
         pr-open)
-            echo "⚠️  PR がまだオープンです。" >&2
-            read -rp "本当に削除しますか？ [y/N] " yn
+            echo "Warning: PR is still open." >&2
+            read -rp "Are you sure you want to remove it? [y/N] " yn
             ;;
     esac
 
     if [[ ! "$yn" =~ ^[Yy]$ ]]; then
-        echo "キャンセルされました。" >&2
+        echo "Cancelled." >&2
         exit 1
     fi
 
-    # worktree 削除（親リポジトリから実行）
+    # Remove worktree (run from parent repo)
     local git_dir
     git_dir=$(git -C "$workdir" rev-parse --git-common-dir 2>/dev/null)
     if [ -z "$git_dir" ]; then
-        echo "エラー: git リポジトリ情報を取得できません: ${workdir}" >&2
+        echo "Error: failed to get git repository info: ${workdir}" >&2
         exit 1
     fi
     git --git-dir="$git_dir" worktree remove "$workdir" --force
-    echo "タスクを完了しました: ${selected}" >&2
+    echo "Task completed: ${selected}" >&2
 }
 
 cmd_open() {
@@ -331,7 +331,7 @@ cmd_open() {
     dir=$(eval echo "$WORKTREE_DIR")
 
     if [ ! -d "$dir" ]; then
-        echo "worktree ディレクトリが存在しません: $dir" >&2
+        echo "Worktree directory not found: $dir" >&2
         exit 1
     fi
 
@@ -339,7 +339,7 @@ cmd_open() {
     selected=$(cmd_ls | fzf --prompt="Select Task> ")
 
     if [ -z "$selected" ]; then
-        echo "キャンセルされました。" >&2
+        echo "Cancelled." >&2
         exit 1
     fi
 
