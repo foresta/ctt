@@ -133,8 +133,21 @@ link_ignored_files() {
             continue
         fi
 
+        echo "Linking... :${src}" >&2
+
         mkdir -p "$(dirname "$dst")"
-        ln -s "$src" "$dst"
+        if [ -d "$src" ]; then
+            mkdir -p "$dst"
+            for item in "$src"/*; do
+                [ -e "$item" ] || continue
+                local item_name
+                item_name=$(basename "$item")
+                [ -e "$dst/$item_name" ] || [ -L "$dst/$item_name" ] && continue
+                ln -s "$item" "$dst/$item_name"
+            done
+        else
+            ln -s "$src" "$dst"
+        fi
         linked=$((linked + 1))
         echo "Linked: ${path}" >&2
     done < <(cd "$repo_dir" && git ls-files --others --ignored --exclude-standard --directory 2>/dev/null)
