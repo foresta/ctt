@@ -2,6 +2,9 @@
 
 set -e
 
+WORKSPACE_DIR="$HOME/work"
+WORKTREE_DIR="$WORKSPACE_DIR/worktrees"
+
 SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
 
 if ! command -v fzf &> /dev/null; then
@@ -210,8 +213,6 @@ get_task_status() {
     echo -e "${status}\t${branch}\t${uncommitted} changed\t${commits_ahead} commits\t${pr_url}"
 }
 
-WORKTREE_DIR="~/work/worktrees"
-
 usage() {
     echo "Usage: ctt <command>" >&2
     echo "" >&2
@@ -226,7 +227,7 @@ usage() {
 
 cmd_ls() {
     local dir
-    dir=$(eval echo "$WORKTREE_DIR")
+    dir="$WORKTREE_DIR"
 
     if [ ! -d "$dir" ]; then
         echo "worktree ディレクトリが存在しません: $dir" >&2
@@ -247,7 +248,7 @@ cmd_ls() {
 
 cmd_status() {
     local dir
-    dir=$(eval echo "$WORKTREE_DIR")
+    dir="$WORKTREE_DIR"
 
     if [ "$1" = "--all" ]; then
         cmd_ls | while read -r task; do
@@ -274,7 +275,7 @@ cmd_status() {
 
 cmd_done() {
     local dir
-    dir=$(eval echo "$WORKTREE_DIR")
+    dir="$WORKTREE_DIR"
 
     local selected
     selected=$(cmd_ls | fzf --prompt="Select Task to Complete> ")
@@ -328,7 +329,7 @@ cmd_done() {
 
 cmd_open() {
     local dir
-    dir=$(eval echo "$WORKTREE_DIR")
+    dir="$WORKTREE_DIR"
 
     if [ ! -d "$dir" ]; then
         echo "worktree ディレクトリが存在しません: $dir" >&2
@@ -351,7 +352,7 @@ cmd_open() {
 }
 
 cmd_new() {
-    cd ~/work
+    cd "$WORKSPACE_DIR"
 
     selected_repo=$(select_repo)
     cd "$selected_repo"
