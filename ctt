@@ -2,7 +2,7 @@
 
 set -e
 
-SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
+CONFIG_DIR="${HOME}/.config/ctt"
 
 if ! command -v fzf &> /dev/null; then
     echo "エラー: fzf がインストールされていません。" >&2
@@ -94,7 +94,7 @@ create_worktree() {
 link_ignored_files() {
     local repo_dir="$1"
     local workdir="$2"
-    local ignore_file="${SCRIPT_DIR}/.worktree-link-ignore"
+    local ignore_file="${CONFIG_DIR}/.worktree-link-ignore"
     local skip_patterns=()
 
     # .worktree-link-ignore があればスキップパターンを読み込む
