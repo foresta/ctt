@@ -345,6 +345,22 @@ cmd_done() {
         exit 1
     fi
     git --git-dir="$git_dir" worktree remove "$workdir" --force
+
+    # Delete local branch if it exists
+    local branch="${selected#*__}"
+    if git --git-dir="$git_dir" branch --list "$branch" | grep -q .; then
+        read -rp "Delete local branch '${branch}'? [y/N] " del_branch
+        if [[ "$del_branch" =~ ^[Yy]$ ]]; then
+            if ! git --git-dir="$git_dir" branch -d "$branch" 2>/dev/null 1>&2; then
+                echo "Warning: branch '${branch}' is not fully merged." >&2
+                read -rp "Force delete? [y/N] " force_del
+                if [[ "$force_del" =~ ^[Yy]$ ]]; then
+                    git --git-dir="$git_dir" branch -D "$branch" >&2
+                fi
+            fi
+        fi
+    fi
+
     echo "Task completed: ${selected}" >&2
 }
 
@@ -392,7 +408,14 @@ cmd_new() {
         if [ "$action" = "new_from_base" ]; then
             new_name=$(input_new_branch_name)
             target_branch="$new_name"
-            git_args=(-b "$target_branch" "$branch")
+            # Fetch latest if remote branch exists
+            if git ls-remote --exit-code origin "$branch" >/dev/null 2>&1; then
+                echo "Fetching latest '${branch}'..." >&2
+                git fetch origin "$branch" >&2
+                git_args=(-b "$target_branch" "origin/$branch")
+            else
+                git_args=(-b "$target_branch" "$branch")
+            fi
         else
             git_args=("$branch")
         fi
