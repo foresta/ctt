@@ -16,8 +16,13 @@ A CLI tool for managing development tasks using git worktrees. Each task runs in
 ## Installation
 
 ```bash
-# TODO: make install
+git clone https://github.com/your-user/ctt.git
+cd ctt
+make install
 ```
+
+This installs `ctt` to `~/.local/bin/` and config files to `~/.config/ctt/`.
+Ensure `~/.local/bin` is in your `PATH`.
 
 ## Usage
 

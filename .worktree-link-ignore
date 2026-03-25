@@ -1,2 +1,2 @@
-# worktree にシンボリックリンクしないパターン
+# Patterns to exclude from symlinking into worktrees
 .DS_Store
