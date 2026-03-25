@@ -149,7 +149,7 @@ open_editor() {
     local workdir="$2"
     local branch="$3"
     local resume="${4:-false}"
-    local tmux_window_name="${repo_name}:${branch}"
+    local tmux_window_name="${repo_name}__${branch}"
     local terminal_title="Claude: ${repo_name} [${branch}]"
     local claude_cmd="ClaudeCode"
     if [ "$resume" = "true" ]; then
@@ -313,6 +313,15 @@ cmd_done() {
     if [[ ! "$yn" =~ ^[Yy]$ ]]; then
         echo "Cancelled." >&2
         exit 1
+    fi
+
+    # Kill tmux window if it exists
+    if [ -n "$TMUX" ] && tmux list-windows -F '#{window_name}' | grep -qx "$selected"; then
+        read -rp "tmux window '${selected}' is open. Close it? [y/N] " close_win
+        if [[ "$close_win" =~ ^[Yy]$ ]]; then
+            tmux kill-window -t "$selected"
+            echo "Closed tmux window: ${selected}" >&2
+        fi
     fi
 
     # Remove worktree (run from parent repo)
