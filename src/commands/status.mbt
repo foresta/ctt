@@ -63,6 +63,7 @@ pub async fn cmd_status(args : Array[String]) -> Unit {
   let dir = @config.worktree_dir()
   if show_all {
     let tasks = try { list_tasks() } catch { _ => [] }
+    println("TASK\tSTATUS\tBRANCH\tCHANGED\tAHEAD\tPR")
     for task in tasks {
       let workdir = dir + "/" + task
       let info = get_task_status(workdir)
