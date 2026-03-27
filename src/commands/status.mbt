@@ -58,19 +58,69 @@ fn format_status(status : @models.TaskStatus) -> String {
 }
 
 ///|
+fn pad_right(s : String, width : Int) -> String {
+  let len = s.length()
+  if len >= width {
+    return s
+  }
+  let buf = StringBuilder::new()
+  buf.write_string(s)
+  for i = len; i < width; i = i + 1 {
+    buf.write_char(' ')
+  }
+  buf.to_string()
+}
+
+///|
+fn print_table(rows : Array[Array[String]]) -> Unit {
+  let col_count = rows[0].length()
+  let widths = Array::make(col_count, 0)
+  for row in rows {
+    for i, cell in row {
+      if cell.length() > widths[i] {
+        widths[i] = cell.length()
+      }
+    }
+  }
+  for row in rows {
+    let buf = StringBuilder::new()
+    for i, cell in row {
+      if i > 0 {
+        buf.write_string("  ")
+      }
+      if i < col_count - 1 {
+        buf.write_string(pad_right(cell, widths[i]))
+      } else {
+        buf.write_string(cell)
+      }
+    }
+    println(buf.to_string())
+  }
+}
+
+///|
 pub async fn cmd_status(args : Array[String]) -> Unit {
   let show_all = args.length() > 0 && args[0] == "--all"
   let dir = @config.worktree_dir()
   if show_all {
     let tasks = try { list_tasks() } catch { _ => [] }
-    println("TASK\tSTATUS\tBRANCH\tCHANGED\tAHEAD\tPR")
+    let header = ["TASK", "STATUS", "BRANCH", "CHANGED", "AHEAD", "PR"]
+    let rows : Array[Array[String]] = [header]
     for task in tasks {
       let workdir = dir + "/" + task
       let info = get_task_status(workdir)
-      println(
-        "\{task}\t\{format_status(info.status)}\t\{info.branch}\t\{info.uncommitted} changed\t\{info.commits_ahead} commits\t\{info.pr_url}",
+      rows.push(
+        [
+          task,
+          format_status(info.status),
+          info.branch,
+          "\{info.uncommitted} changed",
+          "\{info.commits_ahead} commits",
+          info.pr_url,
+        ],
       )
     }
+    print_table(rows)
     return
   }
   // Interactive selection
