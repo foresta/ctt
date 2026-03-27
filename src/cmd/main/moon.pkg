@@ -1,5 +1,6 @@
 import {
   "foresta/ctt/commands",
+  "foresta/ctt/config",
   "moonbitlang/async",
   "moonbitlang/core/env",
 }

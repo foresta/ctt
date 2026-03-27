@@ -18,6 +18,14 @@ async fn main {
     return
   }
   let cmd = args[1]
+  try {
+    @config.validate()
+  } catch {
+    err => {
+      println("Error: \{err}")
+      return
+    }
+  }
   match cmd {
     "ls" => {
       try {

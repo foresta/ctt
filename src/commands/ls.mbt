@@ -1,37 +1,18 @@
 ///|
-pub fn cmd_ls() -> Unit raise {
-  let dir = @config.worktree_dir()
-  if not(@fs.path_exists(dir)) {
-    println("Worktree directory not found: \{dir}")
-    raise @builtin.Failure("worktree directory not found")
-  }
-  let entries = @fs.read_dir(dir)
-  let mut found = false
-  for entry in entries {
-    let entry_path = @path.Path(dir).join(@path.Path(entry)).to_string()
-    if @fs.is_dir(entry_path) {
-      found = true
-      println(entry)
-    }
-  }
-  if not(found) {
+pub fn cmd_ls(tasks : Array[String]) -> Unit {
+  if tasks.is_empty() {
     println("No active tasks.")
+  } else {
+    tasks.each(fn(t) { println(t) })
   }
 }
 
 ///|
 pub fn list_tasks() -> Array[String] raise {
   let dir = @config.worktree_dir()
-  if not(@fs.path_exists(dir)) {
-    return []
-  }
-  let entries = @fs.read_dir(dir)
-  let tasks : Array[String] = []
-  for entry in entries {
-    let entry_path = @path.Path(dir).join(@path.Path(entry)).to_string()
-    if @fs.is_dir(entry_path) {
-      tasks.push(entry)
-    }
-  }
-  tasks
+  @fs.read_dir(dir)
+    .filter(fn(entry) {
+      let entry_path = @path.Path(dir).join(@path.Path(entry)).to_string()
+      try { @fs.is_dir(entry_path) } catch { _ => false }
+    })
 }

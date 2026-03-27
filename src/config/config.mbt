@@ -20,3 +20,11 @@ pub fn worktree_dir() -> String {
 pub fn config_dir() -> String {
   @path.Path(home_dir()).join(@path.Path(".config/ctt")).to_string()
 }
+
+///|
+pub fn validate() -> Unit raise {
+  let dir = worktree_dir()
+  if not(@fs.path_exists(dir)) {
+    raise @builtin.Failure("Worktree directory not found: \{dir}")
+  }
+}
