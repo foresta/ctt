@@ -1,0 +1,53 @@
+///|
+pub async fn fzf_select(
+  items : Array[String],
+  prompt~ : String = "Select> "
+) -> String? {
+  let input = items.join("\n")
+  let (read_end, write_end) = @pipe.pipe()
+  write_end.write(input)
+  write_end.close()
+  let (status, output) = @process.collect_stdout(
+    "fzf",
+    ["--prompt=\{prompt}"],
+    stdin=read_end,
+  )
+  read_end.close()
+  if status != 0 {
+    return None
+  }
+  let result = output.text().trim_end().to_string()
+  if result == "" {
+    None
+  } else {
+    Some(result)
+  }
+}
+
+///|
+pub async fn fzf_select_with_query(
+  items : Array[String],
+  prompt~ : String = "Select> "
+) -> (String, String?) {
+  let input = items.join("\n")
+  let (read_end, write_end) = @pipe.pipe()
+  write_end.write(input)
+  write_end.close()
+  let (_, output) = @process.collect_stdout(
+    "fzf",
+    ["--print-query", "--prompt=\{prompt}"],
+    stdin=read_end,
+  )
+  read_end.close()
+  let text = output.text().trim_end().to_string()
+  let lines : Array[String] = text
+    .split("\n")
+    .filter(fn(s) { s.length() > 0 })
+    .map(fn(s) { s.to_string() })
+    .collect()
+  match lines.length() {
+    0 => ("", None)
+    1 => (lines[0], None)
+    _ => (lines[0], Some(lines[1]))
+  }
+}

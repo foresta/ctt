@@ -1,0 +1,9 @@
+import {
+  "foresta/ctt/commands",
+  "moonbitlang/async",
+  "moonbitlang/core/env",
+}
+
+options(
+  "is-main": true,
+)
