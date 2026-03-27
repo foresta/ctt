@@ -114,6 +114,7 @@ async fn input_new_branch_name() -> String {
 
 ///|
 async fn create_worktree(
+  repo_dir : String,
   workdir : String,
   git_args : Array[String]
 ) -> (Bool, String) {
@@ -132,7 +133,7 @@ async fn create_worktree(
   for arg in git_args {
     args.push(arg)
   }
-  let (status, output) = @services.git_run(args)
+  let (status, output) = @services.git_run(args, cwd=repo_dir)
   if status != 0 {
     println("Error: \{output}")
     raise @builtin.Failure("git worktree add failed")
@@ -178,7 +179,7 @@ pub async fn cmd_new() -> Unit {
   }
   let worktree_dir = @config.worktree_dir()
   let workdir = "\{worktree_dir}/\{repo_name}__\{target_branch}"
-  let (is_existing_wt, actual_workdir) = create_worktree(workdir, git_args)
+  let (is_existing_wt, actual_workdir) = create_worktree(repo_dir, workdir, git_args)
   // Link ignored files
   link_ignored_files(repo_dir, actual_workdir)
   @services.open_editor(

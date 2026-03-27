@@ -42,12 +42,13 @@ pub async fn fzf_select_with_query(
   let text = output.text().trim_end().to_string()
   let lines : Array[String] = text
     .split("\n")
-    .filter(fn(s) { s.length() > 0 })
     .map(fn(s) { s.to_string() })
     .collect()
-  match lines.length() {
-    0 => ("", None)
-    1 => (lines[0], None)
-    _ => (lines[0], Some(lines[1]))
+  if lines.length() >= 2 && lines[1] != "" {
+    (lines[0], Some(lines[1]))
+  } else if lines.length() >= 1 && lines[0] != "" {
+    (lines[0], None)
+  } else {
+    ("", None)
   }
 }
