@@ -1,11 +1,19 @@
 ///|
+pub(all) struct DoneCommand {}
+
+///|
+impl Runnable for DoneCommand with run(self) {
+  let _ = self
+  cmd_done()
+}
+
+///|
 pub async fn cmd_done() -> Unit {
-  let dir = @config.worktree_dir()
-  let tasks = try { list_tasks() } catch { _ => [] }
-  if tasks.is_empty() {
-    println("No active tasks.")
-    return
+  let tasks = match require_tasks() {
+    None => return
+    Some(t) => t
   }
+  let dir = @config.worktree_dir()
   let selected = @services.fzf_select(tasks, prompt="Select Task to Complete> ")
   match selected {
     None => {

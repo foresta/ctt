@@ -99,11 +99,24 @@ fn print_table(rows : Array[Array[String]]) -> Unit {
 }
 
 ///|
+pub(all) struct StatusCommand {
+  params : Array[String]
+}
+
+///|
+impl Runnable for StatusCommand with run(self) {
+  cmd_status(self.params)
+}
+
+///|
 pub async fn cmd_status(args : Array[String]) -> Unit {
   let show_all = args.length() > 0 && args[0] == "--all"
+  let tasks = match require_tasks() {
+    None => return
+    Some(t) => t
+  }
   let dir = @config.worktree_dir()
   if show_all {
-    let tasks = try { list_tasks() } catch { _ => [] }
     let header = ["TASK", "STATUS", "BRANCH", "CHANGED", "AHEAD", "PR"]
     let rows : Array[Array[String]] = [header]
     for task in tasks {
@@ -124,11 +137,6 @@ pub async fn cmd_status(args : Array[String]) -> Unit {
     return
   }
   // Interactive selection
-  let tasks = try { list_tasks() } catch { _ => [] }
-  if tasks.is_empty() {
-    println("No active tasks.")
-    return
-  }
   let selected = @services.fzf_select(tasks, prompt="Select Task> ")
   match selected {
     None => println("Cancelled.")

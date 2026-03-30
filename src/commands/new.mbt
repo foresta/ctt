@@ -142,6 +142,15 @@ async fn create_worktree(
 }
 
 ///|
+pub(all) struct NewCommand {}
+
+///|
+impl Runnable for NewCommand with run(self) {
+  let _ = self
+  cmd_new()
+}
+
+///|
 pub async fn cmd_new() -> Unit {
   let repo_dir = select_repo()
   let repo_name = match repo_dir.rev_find("/") {

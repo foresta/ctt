@@ -1,11 +1,19 @@
 ///|
+pub(all) struct OpenCommand {}
+
+///|
+impl Runnable for OpenCommand with run(self) {
+  let _ = self
+  cmd_open()
+}
+
+///|
 pub async fn cmd_open() -> Unit {
-  let dir = @config.worktree_dir()
-  let tasks = try { list_tasks() } catch { _ => [] }
-  if tasks.is_empty() {
-    println("No active tasks.")
-    return
+  let tasks = match require_tasks() {
+    None => return
+    Some(t) => t
   }
+  let dir = @config.worktree_dir()
   let selected = @services.fzf_select(tasks, prompt="Select Task> ")
   match selected {
     None => println("Cancelled.")
