@@ -1,4 +1,5 @@
 ///|
+/// Completes a task by removing its worktree, optionally closing its tmux window and deleting its branch.
 pub(all) struct DoneCommand {
   selector : &@ports.ItemSelector
   prompter : &@ports.UserPrompter
@@ -9,6 +10,7 @@ pub(all) struct DoneCommand {
 }
 
 ///|
+/// Interactively selects a task, shows its status, confirms cleanup, then removes the worktree and optionally the branch.
 impl Runnable for DoneCommand with run(self) {
   let task_list = match self.tasks.list() {
     Ok(t) => t

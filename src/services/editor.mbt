@@ -1,4 +1,5 @@
 ///|
+/// Open nvim with Claude Code in a tmux window (or current terminal if not in tmux).
 pub async fn open_editor(
   repo_name : String,
   workdir : String,

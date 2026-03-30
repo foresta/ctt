@@ -1,4 +1,5 @@
 ///|
+/// Parse command-line arguments into a `CommandInput`. Raises on invalid input.
 pub fn parse(args : Array[String]) -> @commands.CommandInput raise {
   if args.length() < 2 {
     usage()
@@ -23,6 +24,7 @@ pub fn parse(args : Array[String]) -> @commands.CommandInput raise {
 }
 
 ///|
+/// Print usage information to stdout.
 pub fn usage() -> Unit {
   println("Usage: ctt <command>")
   println("")

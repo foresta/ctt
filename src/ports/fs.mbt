@@ -1,4 +1,6 @@
 ///|
+/// Port for filesystem operations including directory listing, path checks,
+/// directory creation, symlink creation, and file reading.
 pub(open) trait FileSystem {
   read_dir(Self, path~ : String) -> Result[Array[String], String]
   path_exists(Self, path~ : String) -> Bool

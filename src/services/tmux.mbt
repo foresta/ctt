@@ -1,4 +1,5 @@
 ///|
+/// Create a new tmux window with the given name, working directory, and command.
 pub async fn tmux_new_window(
   name : String,
   cwd : String,
@@ -12,6 +13,7 @@ pub async fn tmux_new_window(
 }
 
 ///|
+/// List all tmux window names in the current session.
 pub async fn tmux_list_windows() -> Array[String] {
   let (status, output) = @process.collect_output_merged(
     "tmux",
@@ -28,12 +30,14 @@ pub async fn tmux_list_windows() -> Array[String] {
 }
 
 ///|
+/// Kill a tmux window by name.
 pub async fn tmux_kill_window(name : String) -> Unit {
   let _ = @process.run("tmux", ["kill-window", "-t", name])
 
 }
 
 ///|
+/// Check whether the current process is running inside a tmux session.
 pub fn is_in_tmux() -> Bool {
   match @sys.get_env_var("TMUX") {
     Some(v) => v != ""

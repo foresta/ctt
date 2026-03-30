@@ -1,4 +1,5 @@
 ///|
+/// Converts a TaskStatus enum value to its display string.
 fn format_status(status : @ports.TaskStatus) -> String {
   match status {
     InProgress => "in-progress"
@@ -9,6 +10,7 @@ fn format_status(status : @ports.TaskStatus) -> String {
 }
 
 ///|
+/// Pads a string with trailing spaces to reach the given width.
 fn pad_right(s : String, width : Int) -> String {
   let len = s.length()
   if len >= width {
@@ -23,6 +25,7 @@ fn pad_right(s : String, width : Int) -> String {
 }
 
 ///|
+/// Prints rows as a column-aligned table, auto-sizing each column to its widest cell.
 fn print_table(rows : Array[Array[String]]) -> Unit {
   let col_count = rows[0].length()
   let widths = Array::make(col_count, 0)
@@ -50,6 +53,7 @@ fn print_table(rows : Array[Array[String]]) -> Unit {
 }
 
 ///|
+/// Shows git and PR status for tasks. Supports `--all` for a summary table or interactive single-task view.
 pub(all) struct StatusCommand {
   selector : &@ports.ItemSelector
   repo : &@ports.RepositoryQuery
@@ -58,6 +62,7 @@ pub(all) struct StatusCommand {
 }
 
 ///|
+/// Displays task status: a table of all tasks with `--all`, or an interactive single-task detail view.
 impl Runnable for StatusCommand with run(self) {
   let show_all = self.params.length() > 0 && self.params[0] == "--all"
   let task_list = match self.tasks.list() {

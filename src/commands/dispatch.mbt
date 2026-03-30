@@ -1,4 +1,5 @@
 ///|
+/// Routes a parsed command input to the corresponding command implementation.
 pub fn dispatch(
   input : CommandInput,
   svc : Services,

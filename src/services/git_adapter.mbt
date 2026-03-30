@@ -1,7 +1,9 @@
 ///|
+/// Adapter that implements RepositoryQuery and RepositoryMutator ports using the git CLI.
 pub(all) struct GitCli {}
 
 ///|
+/// Extract the owner/repo slug from a git remote URL.
 fn extract_repo_slug_impl(remote_url : String) -> String {
   let mut url = remote_url
   if url.has_suffix(".git") {
@@ -20,6 +22,7 @@ fn extract_repo_slug_impl(remote_url : String) -> String {
 }
 
 ///|
+/// Gather branch, uncommitted changes, commits ahead, and PR status for a worktree.
 impl @ports.RepositoryQuery for GitCli with get_task_status(self, workdir~) {
   let _ = self
   let branch = git_branch(workdir)
@@ -49,6 +52,7 @@ impl @ports.RepositoryQuery for GitCli with get_task_status(self, workdir~) {
 }
 
 ///|
+/// List local and remote branches for the given repository directory.
 impl @ports.RepositoryQuery for GitCli with list_branches(self, repo_dir~) {
   let _ = self
   let (_, local_output) = git_run(
@@ -83,6 +87,7 @@ impl @ports.RepositoryQuery for GitCli with list_branches(self, repo_dir~) {
 }
 
 ///|
+/// Return the git common directory shared across worktrees.
 impl @ports.RepositoryQuery for GitCli with common_dir(self, workdir~) {
   let _ = self
   let result = git_common_dir(workdir)
@@ -94,6 +99,7 @@ impl @ports.RepositoryQuery for GitCli with common_dir(self, workdir~) {
 }
 
 ///|
+/// Check whether a branch exists in the given git directory.
 impl @ports.RepositoryQuery for GitCli with branch_exists(self, git_dir~, branch~) {
   let _ = self
   let (status, output) = git_run(
@@ -103,6 +109,7 @@ impl @ports.RepositoryQuery for GitCli with branch_exists(self, git_dir~, branch
 }
 
 ///|
+/// List files and directories ignored by .gitignore.
 impl @ports.RepositoryQuery for GitCli with list_ignored_files(self, repo_dir~) {
   let _ = self
   let (status, output) = git_run(
@@ -128,6 +135,7 @@ impl @ports.RepositoryQuery for GitCli with list_ignored_files(self, repo_dir~) 
 }
 
 ///|
+/// Create a new worktree with a new branch, optionally based on a given branch.
 impl @ports.RepositoryMutator for GitCli with create_branch_worktree(
   self,
   repo_dir~,
@@ -160,6 +168,7 @@ impl @ports.RepositoryMutator for GitCli with create_branch_worktree(
 }
 
 ///|
+/// Create a worktree that checks out an existing branch.
 impl @ports.RepositoryMutator for GitCli with checkout_worktree(
   self,
   repo_dir~,
@@ -178,6 +187,7 @@ impl @ports.RepositoryMutator for GitCli with checkout_worktree(
 }
 
 ///|
+/// Force-remove a worktree by its working directory path.
 impl @ports.RepositoryMutator for GitCli with remove_worktree(
   self,
   git_dir~,
@@ -194,6 +204,7 @@ impl @ports.RepositoryMutator for GitCli with remove_worktree(
 }
 
 ///|
+/// Delete a branch, optionally with force.
 impl @ports.RepositoryMutator for GitCli with delete_branch(
   self,
   git_dir~,

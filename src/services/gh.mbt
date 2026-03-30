@@ -1,4 +1,5 @@
 ///|
+/// Query the PR state and URL for a branch using the gh CLI.
 pub async fn gh_pr_status(
   repo_slug : String,
   branch : String
@@ -23,6 +24,7 @@ pub async fn gh_pr_status(
 }
 
 ///|
+/// Extract a string value for the given key from a simple JSON string.
 fn extract_json_string(json : String, key : String) -> String {
   let pattern = "\"\{key}\":\""
   match json.find(pattern) {

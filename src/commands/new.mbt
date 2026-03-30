@@ -1,4 +1,5 @@
 ///|
+/// Creates a new task by setting up a git worktree and opening it in the editor.
 pub(all) struct NewCommand {
   selector : &@ports.ItemSelector
   prompter : &@ports.UserPrompter
@@ -12,6 +13,7 @@ pub(all) struct NewCommand {
 }
 
 ///|
+/// Guides the user through repo selection, branch selection, worktree creation, and editor launch.
 impl Runnable for NewCommand with run(self) {
   // Select repository
   let repo_dir = match self.select_repo() {
@@ -152,6 +154,7 @@ impl Runnable for NewCommand with run(self) {
 }
 
 ///|
+/// Discovers git repositories in the workspace and prompts the user to pick one.
 async fn NewCommand::select_repo(self : NewCommand) -> Result[String, String] {
   let repos = match self.repo_finder.find_git_repos(
     workspace=self.workspace_dir,
@@ -171,6 +174,7 @@ async fn NewCommand::select_repo(self : NewCommand) -> Result[String, String] {
 }
 
 ///|
+/// Lists local and remote branches for selection. Returns the branch name and whether it already exists.
 async fn NewCommand::select_branch(
   self : NewCommand,
   repo_dir : String
@@ -205,6 +209,7 @@ async fn NewCommand::select_branch(
 }
 
 ///|
+/// Asks the user whether to checkout an existing branch or create a new branch from it.
 async fn NewCommand::ask_branch_action(
   self : NewCommand
 ) -> Result[String, String] {
@@ -221,6 +226,7 @@ async fn NewCommand::ask_branch_action(
 }
 
 ///|
+/// Prompts the user to type a new branch name.
 async fn NewCommand::input_new_branch_name(
   self : NewCommand
 ) -> Result[String, String] {
@@ -236,6 +242,7 @@ async fn NewCommand::input_new_branch_name(
 }
 
 ///|
+/// Symlinks git-ignored files from the source repo into the new worktree, respecting skip patterns from `.worktree-link-ignore`.
 async fn NewCommand::link_ignored_files(
   self : NewCommand,
   repo_dir : String,

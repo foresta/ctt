@@ -1,4 +1,5 @@
 ///|
+/// Run a git command with the given arguments and return the exit status and merged output.
 pub async fn git_run(args : Array[String], cwd~ : String = "") -> (Int, String) {
   let (status, output) = if cwd == "" {
     @process.collect_output_merged("git", args)
@@ -9,12 +10,14 @@ pub async fn git_run(args : Array[String], cwd~ : String = "") -> (Int, String) 
 }
 
 ///|
+/// Return the current branch name for the given working directory.
 pub async fn git_branch(workdir : String) -> String {
   let (_, output) = git_run(["-C", workdir, "rev-parse", "--abbrev-ref", "HEAD"])
   output
 }
 
 ///|
+/// Count the number of uncommitted changes (from `git status --porcelain`).
 pub async fn git_uncommitted_count(workdir : String) -> Int {
   let (_, output) = git_run(["-C", workdir, "status", "--porcelain"])
   if output == "" {
@@ -25,6 +28,7 @@ pub async fn git_uncommitted_count(workdir : String) -> Int {
 }
 
 ///|
+/// Count commits ahead of origin/main for the given working directory.
 pub async fn git_commits_ahead(workdir : String) -> Int {
   let (status, output) = git_run(
     ["-C", workdir, "log", "--oneline", "origin/main..HEAD"],
@@ -37,6 +41,7 @@ pub async fn git_commits_ahead(workdir : String) -> Int {
 }
 
 ///|
+/// Return the remote origin URL for the given working directory.
 pub async fn git_remote_url(workdir : String) -> String {
   let (status, output) = git_run(
     ["-C", workdir, "remote", "get-url", "origin"],
@@ -45,6 +50,7 @@ pub async fn git_remote_url(workdir : String) -> String {
 }
 
 ///|
+/// Return the git common directory (shared across worktrees) for the given path.
 pub async fn git_common_dir(workdir : String) -> String {
   let (status, output) = git_run(
     ["-C", workdir, "rev-parse", "--git-common-dir"],

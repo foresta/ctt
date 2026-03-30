@@ -1,4 +1,5 @@
 ///|
+/// Opens an existing task's worktree in the editor via interactive selection.
 pub(all) struct OpenCommand {
   selector : &@ports.ItemSelector
   editor : &@ports.EditorLauncher
@@ -6,6 +7,7 @@ pub(all) struct OpenCommand {
 }
 
 ///|
+/// Prompts the user to select a task, then launches the editor for its worktree.
 impl Runnable for OpenCommand with run(self) {
   let task_list = match self.tasks.list() {
     Ok(t) => t

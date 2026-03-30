@@ -1,9 +1,11 @@
 ///|
+/// Lists all active task names.
 pub(all) struct LsCommand {
   tasks : &@task.TaskRepository
 }
 
 ///|
+/// Prints each active task name to stdout, or a message if none exist.
 impl Runnable for LsCommand with run(self) {
   match self.tasks.list() {
     Ok(tasks) =>

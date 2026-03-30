@@ -1,4 +1,5 @@
 ///|
+/// Present items in fzf and return the selected item, or None if cancelled.
 pub async fn fzf_select(
   items : Array[String],
   prompt~ : String = "Select> "
@@ -25,6 +26,7 @@ pub async fn fzf_select(
 }
 
 ///|
+/// Present items in fzf with --print-query, returning the typed query and optional selection.
 pub async fn fzf_select_with_query(
   items : Array[String],
   prompt~ : String = "Select> "

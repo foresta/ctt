@@ -1,7 +1,9 @@
 ///|
+/// Adapter that implements the RepositoryFinder port using the find command.
 pub(all) struct FindCommandFinder {}
 
 ///|
+/// Discover git repositories under the workspace directory up to max_depth.
 impl @ports.RepositoryFinder for FindCommandFinder with find_git_repos(self, workspace~, max_depth~) {
   let _ = self
   let (status, output) = @process.collect_output_merged(
