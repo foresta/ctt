@@ -1,106 +1,139 @@
 ///|
-pub(all) struct DoneCommand {}
-
-///|
-impl Runnable for DoneCommand with run(self) {
-  let _ = self
-  cmd_done()
+pub(all) struct DoneCommand {
+  selector : &@ports.ItemSelector
+  prompter : &@ports.UserPrompter
+  repo_query : &@ports.RepositoryQuery
+  repo_mutator : &@ports.RepositoryMutator
+  session : &@ports.SessionManager
+  tasks : &@task.TaskRepository
 }
 
 ///|
-pub async fn cmd_done() -> Unit {
-  let tasks = match require_tasks() {
-    None => return
-    Some(t) => t
+impl Runnable for DoneCommand with run(self) {
+  let task_list = match self.tasks.list() {
+    Ok(t) => t
+    Err(e) => { println("Error: \{e}"); return }
   }
-  let dir = @config.worktree_dir()
-  let selected = @services.fzf_select(tasks, prompt="Select Task to Complete> ")
+  if task_list.is_empty() {
+    println("No active tasks.")
+    return
+  }
+  let names = task_list.map(fn(t) { t.name })
+  let selected = match self.selector.select(
+    items=names,
+    prompt="Select Task to Complete> ",
+  ) {
+    Ok(s) => s
+    Err(e) => { println("Error: \{e}"); return }
+  }
   match selected {
     None => {
       println("Cancelled.")
       return
     }
-    Some(task) => {
-      let workdir = dir + "/" + task
-      // Show status
-      println("Task: \{task}")
-      let info = get_task_status(workdir)
-      let status_str = format_status(info.status)
+    Some(name) => {
+      let t = match task_list.iter().find_first(fn(t) { t.name == name }) {
+        Some(t) => t
+        None => { println("Error: task not found"); return }
+      }
+      println("Task: \{name}")
+      let info = match self.repo_query.get_task_status(workdir=t.workdir) {
+        Ok(i) => i
+        Err(e) => { println("Error: \{e}"); return }
+      }
       println(
-        "\{status_str}\t\{info.branch}\t\{info.uncommitted} changed\t\{info.commits_ahead} commits\t\{info.pr_url}",
+        "\{format_status(info.status)}\t\{info.branch}\t\{info.uncommitted} changed\t\{info.commits_ahead} commits\t\{info.pr_url}",
       )
       println("---")
       // Confirm based on status
-      let confirmed = match info.status {
-        Merged | NoChanges =>
-          @services.confirm("Remove this worktree? [y/N] ")
+      let confirm_msg = match info.status {
+        Merged | NoChanges => "Remove this worktree? [y/N] "
         InProgress => {
           println("Warning: uncommitted or unmerged changes exist.")
-          @services.confirm("Are you sure you want to remove it? [y/N] ")
+          "Are you sure you want to remove it? [y/N] "
         }
         PrOpen => {
           println("Warning: PR is still open.")
-          @services.confirm("Are you sure you want to remove it? [y/N] ")
+          "Are you sure you want to remove it? [y/N] "
         }
       }
-      if not(confirmed) {
-        println("Cancelled.")
-        return
+      match self.prompter.confirm(prompt=confirm_msg) {
+        Ok(true) => ()
+        _ => { println("Cancelled."); return }
       }
-      // Kill tmux window if it exists
-      if @services.is_in_tmux() {
-        let windows = @services.tmux_list_windows()
-        if windows.contains(task) {
-          let close = @services.confirm(
-            "tmux window '\{task}' is open. Close it? [y/N] ",
-          )
-          if close {
-            @services.tmux_kill_window(task)
-            println("Closed tmux window: \{task}")
-          }
+      // Kill tmux window if exists
+      if self.session.is_active() {
+        match self.session.list_windows() {
+          Ok(windows) =>
+            if windows.contains(name) {
+              match self.prompter.confirm(
+                prompt="tmux window '\{name}' is open. Close it? [y/N] ",
+              ) {
+                Ok(true) => {
+                  let _ = self.session.kill_window(name=name)
+                  println("Closed tmux window: \{name}")
+                }
+                _ => ()
+              }
+            }
+          Err(_) => ()
         }
       }
       // Remove worktree
-      let git_dir = @services.git_common_dir(workdir)
-      if git_dir == "" {
-        println("Error: failed to get git repository info: \{workdir}")
-        return
-      }
-      let (rm_status, rm_output) = @services.git_run(
-        ["--git-dir=\{git_dir}", "worktree", "remove", workdir, "--force"],
-      )
-      if rm_status != 0 {
-        println("Error removing worktree: \{rm_output}")
-        return
-      }
-      // Delete local branch if it exists
-      let (_, branch) = split_task_name(task)
-      if branch != "" {
-        let (list_status, list_output) = @services.git_run(
-          ["--git-dir=\{git_dir}", "branch", "--list", branch],
-        )
-        if list_status == 0 && list_output.trim_end().to_string() != "" {
-          let del = @services.confirm(
-            "Delete local branch '\{branch}'? [y/N] ",
-          )
-          if del {
-            let (del_status, _) = @services.git_run(
-              ["--git-dir=\{git_dir}", "branch", "-d", branch],
-            )
-            if del_status != 0 {
-              println("Warning: branch '\{branch}' is not fully merged.")
-              let force = @services.confirm("Force delete? [y/N] ")
-              if force {
-                let _ = @services.git_run(
-                  ["--git-dir=\{git_dir}", "branch", "-D", branch],
-                )
-
-              }
-            }
-          }
+      let git_dir = match self.repo_query.common_dir(workdir=t.workdir) {
+        Ok(d) => d
+        Err(e) => {
+          println("Error: failed to get git repository info: \{e}")
+          return
         }
       }
-      println("Task completed: \{task}")
+      match self.repo_mutator.remove_worktree(
+        git_dir=git_dir,
+        workdir=t.workdir,
+      ) {
+        Ok(_) => ()
+        Err(e) => { println("Error removing worktree: \{e}"); return }
+      }
+      // Delete local branch
+      if t.branch != "" {
+        match self.repo_query.branch_exists(
+          git_dir=git_dir,
+          branch=t.branch,
+        ) {
+          Ok(true) => {
+            match self.prompter.confirm(
+              prompt="Delete local branch '\{t.branch}'? [y/N] ",
+            ) {
+              Ok(true) =>
+                match self.repo_mutator.delete_branch(
+                  git_dir=git_dir,
+                  branch=t.branch,
+                  force=false,
+                ) {
+                  Ok(_) => ()
+                  Err(_) => {
+                    println(
+                      "Warning: branch '\{t.branch}' is not fully merged.",
+                    )
+                    match self.prompter.confirm(prompt="Force delete? [y/N] ") {
+                      Ok(true) => {
+                        let _ = self.repo_mutator.delete_branch(
+                          git_dir=git_dir,
+                          branch=t.branch,
+                          force=true,
+                        )
+                      }
+                      _ => ()
+                    }
+                  }
+                }
+              _ => ()
+            }
+          }
+          _ => ()
+        }
+      }
+      println("Task completed: \{name}")
     }
   }
 }

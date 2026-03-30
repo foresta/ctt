@@ -13,7 +13,24 @@ async fn main {
       return
     }
   }
-  let command = @commands.dispatch(input)
+  let fs = @services.new_filesystem()
+  let svc = @commands.Services::{
+    selector: @services.new_selector(),
+    prompter: @services.new_prompter(),
+    repo_query: @services.new_repo_query(),
+    repo_mutator: @services.new_repo_mutator(),
+    pr: @services.new_pr_service(),
+    session: @services.new_session_manager(),
+    editor: @services.new_editor(),
+    fs,
+    repo_finder: @services.new_repo_finder(),
+    tasks: @services.new_task_repository(fs, @config.workspace_dir()),
+  }
+  let cfg = @commands.AppConfig::{
+    workspace_dir: @config.workspace_dir(),
+    config_dir: @config.config_dir(),
+  }
+  let command = @commands.dispatch(input, svc, cfg)
   try {
     command.run()
   } catch {

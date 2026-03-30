@@ -1,9 +1,4 @@
 import {
-  "foresta/ctt/config",
-  "foresta/ctt/models",
-  "foresta/ctt/services",
-  "moonbitlang/async/process",
-  "moonbitlang/core/builtin",
-  "moonbitlang/x/fs",
-  "moonbitlang/x/path",
+  "foresta/ctt/ports",
+  "foresta/ctt/task",
 }

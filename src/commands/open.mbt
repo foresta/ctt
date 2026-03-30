@@ -1,35 +1,40 @@
 ///|
-pub(all) struct OpenCommand {}
+pub(all) struct OpenCommand {
+  selector : &@ports.ItemSelector
+  editor : &@ports.EditorLauncher
+  tasks : &@task.TaskRepository
+}
 
 ///|
 impl Runnable for OpenCommand with run(self) {
-  let _ = self
-  cmd_open()
-}
-
-///|
-pub async fn cmd_open() -> Unit {
-  let tasks = match require_tasks() {
-    None => return
-    Some(t) => t
+  let task_list = match self.tasks.list() {
+    Ok(t) => t
+    Err(e) => { println("Error: \{e}"); return }
   }
-  let dir = @config.worktree_dir()
-  let selected = @services.fzf_select(tasks, prompt="Select Task> ")
+  if task_list.is_empty() {
+    println("No active tasks.")
+    return
+  }
+  let names = task_list.map(fn(t) { t.name })
+  let selected = match self.selector.select(items=names, prompt="Select Task> ") {
+    Ok(s) => s
+    Err(e) => { println("Error: \{e}"); return }
+  }
   match selected {
     None => println("Cancelled.")
-    Some(task) => {
-      let workdir = dir + "/" + task
-      // Extract repo_name and branch from "repo__branch" format
-      let (repo_name, branch) = split_task_name(task)
-      @services.open_editor(repo_name, workdir, branch, continue_session=true)
+    Some(name) => {
+      let (repo_name, branch) = @task.parse_task_name(name)
+      let worktree_path = task_list
+        .iter()
+        .find_first(fn(t) { t.name == name })
+        .map(fn(t) { t.workdir })
+        .unwrap_or("")
+      let _ = self.editor.open(
+        repo_name=repo_name,
+        workdir=worktree_path,
+        branch=branch,
+        continue_session=true,
+      )
     }
-  }
-}
-
-///|
-fn split_task_name(name : String) -> (String, String) {
-  match name.find("__") {
-    Some(idx) => (name[:idx].to_string(), name[idx + 2:].to_string())
-    None => (name, "")
   }
 }
