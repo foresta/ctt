@@ -9,6 +9,8 @@ pub(all) enum CommandResult {
   Table(Array[Array[String]])
   /// No output.
   Empty
+  /// An error message to display.
+  Error(String)
   /// Show a message, then ask the user for yes/no confirmation.
   /// If yes, evaluate the continuation to get the next result.
   Confirm(

@@ -10,7 +10,7 @@ pub(all) struct OpenCommand {
 impl @ports.Runnable for OpenCommand with run(self) {
   let task_list = match self.tasks.list() {
     Ok(t) => t
-    Err(e) => raise @builtin.Failure(e)
+    Err(e) => return @ports.Error(e)
   }
   if task_list.is_empty() {
     return @ports.Lines(["No active tasks."])

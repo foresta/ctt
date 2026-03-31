@@ -74,6 +74,7 @@ async fn render(
     Lines(lines) => lines.each(fn(l) { println(l) })
     Table(rows) => print_table(rows)
     Empty => ()
+    Error(msg) => println("Error: " + msg)
     Confirm(message~, prompt~, on_yes~) => {
       message.each(fn(l) { println(l) })
       match prompter.confirm(prompt=prompt) {
@@ -109,13 +110,6 @@ async fn main {
   }
   let (svc, cfg) = resolve_dependencies(cfg)
   let command = @commands.dispatch(input, svc, cfg)
-  let result = try {
-    command.run()
-  } catch {
-    err => {
-      println("Error: \{err}")
-      return
-    }
-  }
+  let result = command.run()
   render(result, svc.selector, svc.prompter)
 }

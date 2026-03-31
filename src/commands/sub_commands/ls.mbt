@@ -5,11 +5,11 @@ pub(all) struct LsCommand {
 }
 
 ///|
-/// Returns task names as Lines, or an error message if listing fails.
+/// Returns task names as Lines, or an Error if listing fails.
 impl @ports.Runnable for LsCommand with run(self) {
   let tasks = match self.tasks.list() {
     Ok(t) => t
-    Err(e) => raise @builtin.Failure(e)
+    Err(e) => return @ports.Error(e)
   }
   if tasks.is_empty() {
     @ports.Lines(["No active tasks."])

@@ -1,5 +1,4 @@
 import {
   "foresta/ctt/ports",
   "foresta/ctt/task",
-  "moonbitlang/core/builtin",
 }
