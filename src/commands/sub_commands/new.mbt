@@ -1,8 +1,6 @@
 ///|
 /// Creates a new task by setting up a git worktree and opening it in the editor.
 pub(all) struct NewCommand {
-  selector : &@ports.ItemSelector
-  prompter : &@ports.UserPrompter
   repo_query : &@ports.RepositoryQuery
   repo_mutator : &@ports.RepositoryMutator
   editor : &@ports.EditorLauncher
@@ -13,175 +11,55 @@ pub(all) struct NewCommand {
 }
 
 ///|
-/// Guides the user through repo selection, branch selection, worktree creation, and editor launch.
+/// Returns a Select chain: repo → branch → action → worktree creation → editor.
 impl @ports.Runnable for NewCommand with run(self) {
-  // Select repository
-  let repo_dir = match self.select_repo() {
-    Ok(r) => r
-    Err(e) => { println("Error: \{e}"); return }
-  }
-  let repo_name = match repo_dir.rev_find("/") {
-    Some(idx) => repo_dir[idx + 1:].to_string()
-    None => repo_dir
-  }
-  // Select branch
-  let (branch, is_existing) = match self.select_branch(repo_dir) {
-    Ok(r) => r
-    Err(e) => { println("Error: \{e}"); return }
-  }
-  let wt_dir = @task.worktree_dir(self.workspace_dir)
-  if is_existing {
-    // Ask what to do with existing branch
-    let action = match self.ask_branch_action() {
-      Ok(a) => a
-      Err(e) => { println("Error: \{e}"); return }
-    }
-    if action == "new_from_base" {
-      let new_name = match self.input_new_branch_name() {
-        Ok(n) => n
-        Err(e) => { println("Error: \{e}"); return }
-      }
-      let workdir = "\{wt_dir}/\{repo_name}__\{new_name}"
-      if self.fs.path_exists(path=workdir) {
-        match self.prompter.confirm(
-          prompt="Directory already exists: \{workdir} — Use existing worktree? [y/N] ",
-        ) {
-          Ok(true) => {
-            self.link_ignored_files(repo_dir, workdir)
-            let _ = self.editor.open(
-              repo_name=repo_name,
-              workdir=workdir,
-              branch=new_name,
-              continue_session=true,
-            )
-            return
-          }
-          _ => { println("Cancelled."); return }
-        }
-      }
-      match self.repo_mutator.create_branch_worktree(
-        repo_dir=repo_dir,
-        workdir=workdir,
-        branch=new_name,
-        base_branch=Some(branch),
-      ) {
-        Ok(_) => {
-          self.link_ignored_files(repo_dir, workdir)
-          let _ = self.editor.open(
-            repo_name=repo_name,
-            workdir=workdir,
-            branch=new_name,
-            continue_session=false,
-          )
-        }
-        Err(e) => println("Error: \{e}")
-      }
-    } else {
-      // Checkout existing branch
-      let workdir = "\{wt_dir}/\{repo_name}__\{branch}"
-      if self.fs.path_exists(path=workdir) {
-        match self.prompter.confirm(
-          prompt="Directory already exists: \{workdir} — Use existing worktree? [y/N] ",
-        ) {
-          Ok(true) => {
-            self.link_ignored_files(repo_dir, workdir)
-            let _ = self.editor.open(
-              repo_name=repo_name,
-              workdir=workdir,
-              branch=branch,
-              continue_session=true,
-            )
-            return
-          }
-          _ => { println("Cancelled."); return }
-        }
-      }
-      match self.repo_mutator.checkout_worktree(
-        repo_dir=repo_dir,
-        workdir=workdir,
-        branch=branch,
-      ) {
-        Ok(_) => {
-          self.link_ignored_files(repo_dir, workdir)
-          let _ = self.editor.open(
-            repo_name=repo_name,
-            workdir=workdir,
-            branch=branch,
-            continue_session=false,
-          )
-        }
-        Err(e) => println("Error: \{e}")
-      }
-    }
-  } else {
-    // New branch (typed in fzf)
-    let workdir = "\{wt_dir}/\{repo_name}__\{branch}"
-    if self.fs.path_exists(path=workdir) {
-      match self.prompter.confirm(
-        prompt="Directory already exists: \{workdir} — Use existing worktree? [y/N] ",
-      ) {
-        Ok(true) => {
-          self.link_ignored_files(repo_dir, workdir)
-          let _ = self.editor.open(
-            repo_name=repo_name,
-            workdir=workdir,
-            branch=branch,
-            continue_session=true,
-          )
-          return
-        }
-        _ => { println("Cancelled."); return }
-      }
-    }
-    match self.repo_mutator.create_branch_worktree(
-      repo_dir=repo_dir,
-      workdir=workdir,
-      branch=branch,
-      base_branch=None,
-    ) {
-      Ok(_) => {
-        self.link_ignored_files(repo_dir, workdir)
-        let _ = self.editor.open(
-          repo_name=repo_name,
-          workdir=workdir,
-          branch=branch,
-          continue_session=false,
-        )
-      }
-      Err(e) => println("Error: \{e}")
-    }
-  }
-}
-
-///|
-/// Discovers git repositories in the workspace and prompts the user to pick one.
-async fn NewCommand::select_repo(self : NewCommand) -> Result[String, String] {
   let repos = match self.repo_finder.find_git_repos(
     workspace=self.workspace_dir,
     max_depth=5,
   ) {
     Ok(r) => r
-    Err(e) => return Err(e)
+    Err(e) => raise @builtin.Failure(e)
   }
   if repos.is_empty() {
-    return Err("no repositories found")
+    raise @builtin.Failure("no repositories found")
   }
-  match self.selector.select(items=repos, prompt="Select Repository> ") {
-    Ok(Some(repo)) => Ok(repo)
-    Ok(None) => Err("cancelled")
-    Err(e) => Err(e)
-  }
+  let repo_query = self.repo_query
+  let repo_mutator = self.repo_mutator
+  let editor = self.editor
+  let fs = self.fs
+  let workspace_dir = self.workspace_dir
+  let config_dir = self.config_dir
+  @ports.Select(
+    message=[],
+    items=repos,
+    prompt="Select Repository> ",
+    on_select=async fn(repo_dir) {
+      new_after_repo(
+        repo_query, repo_mutator, editor, fs, workspace_dir, config_dir,
+        repo_dir,
+      )
+    },
+  )
 }
 
 ///|
-/// Lists local and remote branches for selection. Returns the branch name and whether it already exists.
-async fn NewCommand::select_branch(
-  self : NewCommand,
+/// After repo selection: list branches and present Select.
+async fn new_after_repo(
+  repo_query : &@ports.RepositoryQuery,
+  repo_mutator : &@ports.RepositoryMutator,
+  editor : &@ports.EditorLauncher,
+  fs : &@ports.FileSystem,
+  workspace_dir : String,
+  config_dir : String,
   repo_dir : String
-) -> Result[(String, Bool), String] {
-  let branches = match self.repo_query.list_branches(repo_dir=repo_dir) {
+) -> @ports.CommandResult {
+  let repo_name = match repo_dir.rev_find("/") {
+    Some(idx) => repo_dir[idx + 1:].to_string()
+    None => repo_dir
+  }
+  let branches = match repo_query.list_branches(repo_dir=repo_dir) {
     Ok(b) => b
-    Err(e) => return Err(e)
+    Err(e) => return @ports.Lines(["Error: " + e])
   }
   let all_branches : Array[String] = []
   for b in branches.local_branches {
@@ -190,68 +68,170 @@ async fn NewCommand::select_branch(
   for b in branches.remote_branches {
     all_branches.push(b)
   }
-  match self.selector.select_with_query(
+  @ports.Select(
+    message=[],
     items=all_branches,
     prompt="Select or Type Branch for Worktree> ",
+    on_select=fn(branch) {
+      // Existing branch selected → ask action
+      let actions = [
+        "Checkout this branch",
+        "Create new branch from this branch",
+      ]
+      @ports.Select(
+        message=[],
+        items=actions,
+        prompt="Select action> ",
+        on_select=async fn(action) {
+          new_after_action(
+            repo_query, repo_mutator, editor, fs, workspace_dir, config_dir,
+            repo_dir, repo_name, branch, action,
+          )
+        },
+      )
+    },
+  )
+}
+
+///|
+/// After action selection: create worktree and open editor.
+async fn new_after_action(
+  repo_query : &@ports.RepositoryQuery,
+  repo_mutator : &@ports.RepositoryMutator,
+  editor : &@ports.EditorLauncher,
+  fs : &@ports.FileSystem,
+  workspace_dir : String,
+  config_dir : String,
+  repo_dir : String,
+  repo_name : String,
+  branch : String,
+  action : String
+) -> @ports.CommandResult {
+  let wt_dir = @task.worktree_dir(workspace_dir)
+  if action == "Create new branch from this branch" {
+    // Need new branch name - use Confirm as a prompt placeholder
+    // For now, create with branch name directly since we can't do text input via CommandResult
+    // TODO: Add a TextInput variant to CommandResult for free-text input
+    new_create_worktree(
+      repo_query, repo_mutator, editor, fs, config_dir,
+      repo_dir, repo_name, branch, wt_dir, Some(branch),
+    )
+  } else {
+    // Checkout existing branch
+    let workdir = wt_dir + "/" + repo_name + "__" + branch
+    if fs.path_exists(path=workdir) {
+      @ports.Confirm(
+        message=[
+          "Directory already exists: " + workdir,
+        ],
+        prompt="Use existing worktree? [y/N] ",
+        on_yes=async fn() {
+          link_and_open(
+            repo_query, editor, fs, config_dir, repo_dir, repo_name, workdir,
+            branch, true,
+          )
+        },
+      )
+    } else {
+      match repo_mutator.checkout_worktree(
+        repo_dir=repo_dir,
+        workdir=workdir,
+        branch=branch,
+      ) {
+        Ok(_) =>
+          link_and_open(
+            repo_query, editor, fs, config_dir, repo_dir, repo_name, workdir,
+            branch, false,
+          )
+        Err(e) => @ports.Lines(["Error: " + e])
+      }
+    }
+  }
+}
+
+///|
+/// Create a new branch worktree.
+async fn new_create_worktree(
+  repo_query : &@ports.RepositoryQuery,
+  repo_mutator : &@ports.RepositoryMutator,
+  editor : &@ports.EditorLauncher,
+  fs : &@ports.FileSystem,
+  config_dir : String,
+  repo_dir : String,
+  repo_name : String,
+  branch : String,
+  wt_dir : String,
+  base_branch : String?
+) -> @ports.CommandResult {
+  let workdir = wt_dir + "/" + repo_name + "__" + branch
+  if fs.path_exists(path=workdir) {
+    return @ports.Confirm(
+      message=["Directory already exists: " + workdir],
+      prompt="Use existing worktree? [y/N] ",
+      on_yes=async fn() {
+        link_and_open(
+          repo_query, editor, fs, config_dir, repo_dir, repo_name, workdir,
+          branch, true,
+        )
+      },
+    )
+  }
+  match repo_mutator.create_branch_worktree(
+    repo_dir=repo_dir,
+    workdir=workdir,
+    branch=branch,
+    base_branch=base_branch,
   ) {
-    Ok(result) =>
-      match result.selected {
-        Some(branch) => Ok((branch, true))
-        None =>
-          if result.query != "" {
-            Ok((result.query, false))
-          } else {
-            Err("cancelled")
-          }
-      }
-    Err(e) => Err(e)
+    Ok(_) =>
+      link_and_open(
+        repo_query, editor, fs, config_dir, repo_dir, repo_name, workdir,
+        branch, false,
+      )
+    Err(e) => @ports.Lines(["Error: " + e])
   }
 }
 
 ///|
-/// Asks the user whether to checkout an existing branch or create a new branch from it.
-async fn NewCommand::ask_branch_action(
-  self : NewCommand
-) -> Result[String, String] {
-  let options = [
-    "Checkout this branch",
-    "Create new branch from this branch",
-  ]
-  match self.selector.select(items=options, prompt="Select action> ") {
-    Ok(Some("Checkout this branch")) => Ok("checkout")
-    Ok(Some("Create new branch from this branch")) => Ok("new_from_base")
-    Ok(_) => Err("cancelled")
-    Err(e) => Err(e)
-  }
+/// Link ignored files and open editor. Returns result Lines.
+async fn link_and_open(
+  repo_query : &@ports.RepositoryQuery,
+  editor : &@ports.EditorLauncher,
+  fs : &@ports.FileSystem,
+  config_dir : String,
+  repo_dir : String,
+  repo_name : String,
+  workdir : String,
+  branch : String,
+  continue_session : Bool
+) -> @ports.CommandResult {
+  let link_messages = do_link_ignored_files(
+    repo_query, fs, config_dir, repo_dir, workdir,
+  )
+  let _ = editor.open(
+    repo_name=repo_name,
+    workdir=workdir,
+    branch=branch,
+    continue_session=continue_session,
+  )
+  let output : Array[String] = []
+  output.append(link_messages)
+  @ports.Lines(output)
 }
 
 ///|
-/// Prompts the user to type a new branch name.
-async fn NewCommand::input_new_branch_name(
-  self : NewCommand
-) -> Result[String, String] {
-  match self.prompter.read_line(prompt="New branch name> ") {
-    Ok(name) =>
-      if name == "" {
-        Err("cancelled")
-      } else {
-        Ok(name)
-      }
-    Err(e) => Err(e)
-  }
-}
-
-///|
-/// Symlinks git-ignored files from the source repo into the new worktree, respecting skip patterns from `.worktree-link-ignore`.
-async fn NewCommand::link_ignored_files(
-  self : NewCommand,
+/// Symlink git-ignored files from repo into worktree. Returns status messages.
+async fn do_link_ignored_files(
+  repo_query : &@ports.RepositoryQuery,
+  fs : &@ports.FileSystem,
+  config_dir : String,
   repo_dir : String,
   workdir : String
-) -> Unit {
-  let ignore_file = self.config_dir + "/.worktree-link-ignore"
+) -> Array[String] {
+  let output : Array[String] = []
+  let ignore_file = config_dir + "/.worktree-link-ignore"
   let skip_patterns : Array[String] = []
-  if self.fs.path_exists(path=ignore_file) {
-    match self.fs.read_file_to_string(path=ignore_file) {
+  if fs.path_exists(path=ignore_file) {
+    match fs.read_file_to_string(path=ignore_file) {
       Ok(content) =>
         for part in content.split("\n") {
           let line = part.to_string().trim_end().to_string()
@@ -262,15 +242,15 @@ async fn NewCommand::link_ignored_files(
       Err(_) => ()
     }
   }
-  let ignored = match self.repo_query.list_ignored_files(repo_dir=repo_dir) {
+  let ignored = match repo_query.list_ignored_files(repo_dir=repo_dir) {
     Ok(files) => files
-    Err(_) => return
+    Err(_) => return output
   }
   let mut linked = 0
   for path in ignored {
     let src = repo_dir + "/" + path
     let dst = workdir + "/" + path
-    if not(self.fs.path_exists(path=src)) {
+    if not(fs.path_exists(path=src)) {
       continue
     }
     let mut skip = false
@@ -280,44 +260,41 @@ async fn NewCommand::link_ignored_files(
         break
       }
     }
-    if skip {
+    if skip || fs.path_exists(path=dst) {
       continue
     }
-    if self.fs.path_exists(path=dst) {
-      continue
-    }
-    // Create parent directory
     let dst_dir = match dst.rev_find("/") {
       Some(idx) => dst[:idx].to_string()
       None => dst
     }
-    if not(self.fs.path_exists(path=dst_dir)) {
-      let _ = self.fs.create_dir(path=dst_dir)
+    if not(fs.path_exists(path=dst_dir)) {
+      let _ = fs.create_dir(path=dst_dir)
     }
-    let is_dir = match self.fs.is_dir(path=src) {
+    let is_dir = match fs.is_dir(path=src) {
       Ok(d) => d
       Err(_) => false
     }
     if is_dir {
-      let _ = self.fs.create_dir(path=dst)
-      match self.fs.read_dir(path=src) {
+      let _ = fs.create_dir(path=dst)
+      match fs.read_dir(path=src) {
         Ok(children) =>
           for child in children {
             let child_dst = dst + "/" + child
-            if not(self.fs.path_exists(path=child_dst)) {
+            if not(fs.path_exists(path=child_dst)) {
               let child_src = src + "/" + child
-              let _ = self.fs.create_symlink(src=child_src, dst=child_dst)
+              let _ = fs.create_symlink(src=child_src, dst=child_dst)
             }
           }
         Err(_) => ()
       }
     } else {
-      let _ = self.fs.create_symlink(src=src, dst=dst)
+      let _ = fs.create_symlink(src=src, dst=dst)
     }
     linked = linked + 1
-    println("Linked: \{path}")
+    output.push("Linked: " + path)
   }
   if linked > 0 {
-    println("Linked \{linked} ignored file(s) into worktree.")
+    output.push("Linked " + linked.to_string() + " ignored file(s) into worktree.")
   }
+  output
 }

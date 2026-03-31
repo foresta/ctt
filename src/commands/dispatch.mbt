@@ -7,18 +7,17 @@ pub fn dispatch(
 ) -> &@ports.Runnable {
   match input.command {
     Ls => @sub_commands.new_ls(svc.tasks)
-    Open => @sub_commands.new_open(svc.selector, svc.editor, svc.tasks)
+    Open => @sub_commands.new_open(svc.editor, svc.tasks)
     Status =>
-      @sub_commands.new_status(svc.selector, svc.repo_query, svc.tasks, input.params)
+      @sub_commands.new_status(svc.repo_query, svc.tasks, input.params)
     Done =>
       @sub_commands.new_done(
-        svc.selector, svc.prompter, svc.repo_query, svc.repo_mutator,
-        svc.session, svc.tasks,
+        svc.repo_query, svc.repo_mutator, svc.session, svc.tasks,
       )
     New =>
       @sub_commands.new_new(
-        svc.selector, svc.prompter, svc.repo_query, svc.repo_mutator,
-        svc.editor, svc.fs, svc.repo_finder, cfg.workspace_dir, cfg.config_dir,
+        svc.repo_query, svc.repo_mutator, svc.editor, svc.fs,
+        svc.repo_finder, cfg.workspace_dir, cfg.config_dir,
       )
   }
 }

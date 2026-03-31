@@ -5,15 +5,15 @@ pub(all) struct LsCommand {
 }
 
 ///|
-/// Prints each active task name to stdout, or a message if none exist.
+/// Returns task names as Lines, or an error message if listing fails.
 impl @ports.Runnable for LsCommand with run(self) {
-  match self.tasks.list() {
-    Ok(tasks) =>
-      if tasks.is_empty() {
-        println("No active tasks.")
-      } else {
-        tasks.each(fn(t) { println(t.name) })
-      }
-    Err(e) => println("Error: \{e}")
+  let tasks = match self.tasks.list() {
+    Ok(t) => t
+    Err(e) => raise @builtin.Failure(e)
+  }
+  if tasks.is_empty() {
+    @ports.Lines(["No active tasks."])
+  } else {
+    @ports.Lines(tasks.map(fn(t) { t.name }))
   }
 }
