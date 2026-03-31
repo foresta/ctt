@@ -22,19 +22,18 @@ impl @ports.Runnable for OpenCommand with run(self) {
     items=names,
     prompt="Select Task> ",
     on_select=async fn(name) {
-      let (repo_name, branch) = @task.parse_task_name(name)
-      let workdir = task_list
-        .iter()
-        .find_first(fn(t) { t.name == name })
-        .map(fn(t) { t.workdir })
-        .unwrap_or("")
-      let _ = editor.open(
-        repo_name=repo_name,
-        workdir=workdir,
-        branch=branch,
-        continue_session=true,
-      )
-      @ports.Lines(["Opened: " + name])
+      match task_list.iter().find_first(fn(t) { t.name == name }) {
+        Some(task) => {
+          let _ = editor.open(
+            repo_name=task.repo_name,
+            workdir=task.workdir,
+            branch=task.branch,
+            continue_session=true,
+          )
+          @ports.Lines(["Opened: " + task.name])
+        }
+        None => @ports.Error("task not found: " + name)
+      }
     },
   )
 }

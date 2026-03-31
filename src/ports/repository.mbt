@@ -10,12 +10,37 @@ pub(all) enum TaskStatus {
 ///|
 /// Aggregated information about a task branch including its git and PR state.
 pub(all) struct TaskInfo {
+  name : String
   status : TaskStatus
   branch : String
   uncommitted : Int
   commits_ahead : Int
   pr_url : String
 } derive(Show)
+
+///|
+/// Returns the display string for this status.
+pub fn TaskStatus::to_display(self : TaskStatus) -> String {
+  match self {
+    InProgress => "in-progress"
+    PrOpen => "pr-open"
+    Merged => "merged"
+    NoChanges => "no-changes"
+  }
+}
+
+///|
+/// Returns this task info as a row of strings for table display.
+pub fn TaskInfo::to_row(self : TaskInfo) -> Array[String] {
+  [
+    self.name,
+    self.status.to_display(),
+    self.branch,
+    "\{self.uncommitted} changed",
+    "\{self.commits_ahead} commits",
+    self.pr_url,
+  ]
+}
 
 ///|
 /// Local and remote branches available in a repository.
@@ -27,7 +52,7 @@ pub(all) struct BranchList {
 ///|
 /// Port for read-only git repository queries such as branch listing and status checks.
 pub(open) trait RepositoryQuery {
-  async get_task_status(Self, workdir~ : String) -> Result[TaskInfo, String]
+  async get_task_status(Self, name~ : String, workdir~ : String) -> Result[TaskInfo, String]
   async list_branches(Self, repo_dir~ : String) -> Result[BranchList, String]
   async common_dir(Self, workdir~ : String) -> Result[String, String]
   async branch_exists(Self, git_dir~ : String, branch~ : String) -> Result[Bool, String]

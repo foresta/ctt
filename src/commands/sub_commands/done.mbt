@@ -30,20 +30,13 @@ impl @ports.Runnable for DoneCommand with run(self) {
         Some(t) => t
         None => return @ports.Lines(["Error: task not found"])
       }
-      let info = match repo_query.get_task_status(workdir=t.workdir) {
+      let info = match repo_query.get_task_status(name=t.name, workdir=t.workdir) {
         Ok(i) => i
-        Err(e) => return @ports.Lines(["Error: " + e])
+        Err(e) => return @ports.Error(e)
       }
-      let status_line = [
-        format_status(info.status),
-        info.branch,
-        "\{info.uncommitted} changed",
-        "\{info.commits_ahead} commits",
-        info.pr_url,
-      ].join("\t")
       let message : Array[String] = [
-        "Task: " + name,
-        status_line,
+        "Task: " + info.name,
+        info.to_row().join("\t"),
         "---",
       ]
       let confirm_prompt = match info.status {

@@ -34,7 +34,7 @@ fn extract_repo_slug_impl(remote_url : String) -> String {
 
 ///|
 /// Gather branch, uncommitted changes, commits ahead, and PR status for a worktree.
-impl @ports.RepositoryQuery for GitCli with get_task_status(self, workdir~) {
+impl @ports.RepositoryQuery for GitCli with get_task_status(self, name~, workdir~) {
   let _ = self
   let (_, branch) = git_run(["-C", workdir, "rev-parse", "--abbrev-ref", "HEAD"])
   let (_, uc_output) = git_run(["-C", workdir, "status", "--porcelain"])
@@ -78,7 +78,7 @@ impl @ports.RepositoryQuery for GitCli with get_task_status(self, workdir~) {
   } else {
     NoChanges
   }
-  Ok(@ports.TaskInfo::{ status, branch, uncommitted, commits_ahead, pr_url })
+  Ok(@ports.TaskInfo::{ name, status, branch, uncommitted, commits_ahead, pr_url })
 }
 
 ///|
