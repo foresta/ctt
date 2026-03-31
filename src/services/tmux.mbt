@@ -1,46 +1,49 @@
 ///|
-/// Create a new tmux window with the given name, working directory, and command.
-pub async fn tmux_new_window(
-  name : String,
-  cwd : String,
-  command : String
-) -> Unit {
-  let _ = @process.run(
-    "tmux",
-    ["new-window", "-n", name, "-c", cwd, command],
-  )
+/// Adapter that implements the SessionManager port using tmux.
+pub(all) struct TmuxSession {}
 
+///|
+/// Return true if running inside a tmux session.
+impl @ports.SessionManager for TmuxSession with is_active(self) {
+  let _ = self
+  match @sys.get_env_var("TMUX") {
+    Some(v) => v != ""
+    None => false
+  }
 }
 
 ///|
-/// List all tmux window names in the current session.
-pub async fn tmux_list_windows() -> Array[String] {
+/// List all window names in the current tmux session.
+impl @ports.SessionManager for TmuxSession with list_windows(self) {
+  let _ = self
   let (status, output) = @process.collect_output_merged(
     "tmux",
     ["list-windows", "-F", "#{window_name}"],
   )
   if status != 0 {
-    return []
+    return Ok([])
   }
   let text = output.text().trim_end().to_string()
   if text == "" {
-    return []
+    return Ok([])
   }
-  text.split("\n").map(fn(s) { s.to_string() }).collect()
+  Ok(text.split("\n").map(fn(s) { s.to_string() }).collect())
+}
+
+///|
+/// Create a new tmux window with the specified name, directory, and command.
+impl @ports.SessionManager for TmuxSession with create_window(self, name~, cwd~, command~) {
+  let _ = self
+  let _ = @process.run("tmux", ["new-window", "-n", name, "-c", cwd, command])
+
+  Ok(())
 }
 
 ///|
 /// Kill a tmux window by name.
-pub async fn tmux_kill_window(name : String) -> Unit {
+impl @ports.SessionManager for TmuxSession with kill_window(self, name~) {
+  let _ = self
   let _ = @process.run("tmux", ["kill-window", "-t", name])
 
-}
-
-///|
-/// Check whether the current process is running inside a tmux session.
-pub fn is_in_tmux() -> Bool {
-  match @sys.get_env_var("TMUX") {
-    Some(v) => v != ""
-    None => false
-  }
+  Ok(())
 }

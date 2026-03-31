@@ -1,9 +1,11 @@
 ///|
-/// Query the PR state and URL for a branch using the gh CLI.
-pub async fn gh_pr_status(
-  repo_slug : String,
-  branch : String
-) -> (String, String) {
+/// Adapter that implements the PullRequestService port using the gh CLI.
+pub(all) struct GhCli {}
+
+///|
+/// Get the PR state and URL for a branch in the given repository.
+impl @ports.PullRequestService for GhCli with get_status(self, repo_slug~, branch~) {
+  let _ = self
   let (status, output) = @process.collect_output_merged(
     "gh",
     [
@@ -12,15 +14,15 @@ pub async fn gh_pr_status(
     ],
   )
   if status != 0 {
-    return ("", "")
+    return Ok(@ports.PrStatus::{ state: "", url: "" })
   }
   let text = output.text().trim_end().to_string()
   if text == "" || text == "[]" {
-    return ("", "")
+    return Ok(@ports.PrStatus::{ state: "", url: "" })
   }
   let state = extract_json_string(text, "state")
   let url = extract_json_string(text, "url")
-  (state, url)
+  Ok(@ports.PrStatus::{ state, url })
 }
 
 ///|

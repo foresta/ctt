@@ -6,7 +6,7 @@ pub(all) struct LsCommand {
 
 ///|
 /// Prints each active task name to stdout, or a message if none exist.
-impl Runnable for LsCommand with run(self) {
+impl @ports.Runnable for LsCommand with run(self) {
   match self.tasks.list() {
     Ok(tasks) =>
       if tasks.is_empty() {

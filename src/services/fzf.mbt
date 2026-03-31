@@ -1,9 +1,11 @@
 ///|
-/// Present items in fzf and return the selected item, or None if cancelled.
-pub async fn fzf_select(
-  items : Array[String],
-  prompt~ : String = "Select> "
-) -> String? {
+/// Adapter that implements the ItemSelector port using fzf.
+pub(all) struct FzfSelector {}
+
+///|
+/// Select a single item from the list using fzf.
+impl @ports.ItemSelector for FzfSelector with select(self, items~, prompt~) {
+  let _ = self
   let input = items.join("\n")
   let (read_end, write_end) = @pipe.pipe()
   write_end.write(input)
@@ -15,22 +17,16 @@ pub async fn fzf_select(
   )
   read_end.close()
   if status != 0 {
-    return None
+    return Ok(None)
   }
   let result = output.text().trim_end().to_string()
-  if result == "" {
-    None
-  } else {
-    Some(result)
-  }
+  Ok(if result == "" { None } else { Some(result) })
 }
 
 ///|
-/// Present items in fzf with --print-query, returning the typed query and optional selection.
-pub async fn fzf_select_with_query(
-  items : Array[String],
-  prompt~ : String = "Select> "
-) -> (String, String?) {
+/// Select an item with query text returned alongside the selection.
+impl @ports.ItemSelector for FzfSelector with select_with_query(self, items~, prompt~) {
+  let _ = self
   let input = items.join("\n")
   let (read_end, write_end) = @pipe.pipe()
   write_end.write(input)
@@ -46,11 +42,12 @@ pub async fn fzf_select_with_query(
     .split("\n")
     .map(fn(s) { s.to_string() })
     .collect()
-  if lines.length() >= 2 && lines[1] != "" {
-    (lines[0], Some(lines[1]))
+  let result = if lines.length() >= 2 && lines[1] != "" {
+    @ports.SelectionResult::{ query: lines[0], selected: Some(lines[1]) }
   } else if lines.length() >= 1 && lines[0] != "" {
-    (lines[0], None)
+    @ports.SelectionResult::{ query: lines[0], selected: None }
   } else {
-    ("", None)
+    @ports.SelectionResult::{ query: "", selected: None }
   }
+  Ok(result)
 }

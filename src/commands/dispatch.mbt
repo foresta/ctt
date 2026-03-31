@@ -4,42 +4,21 @@ pub fn dispatch(
   input : CommandInput,
   svc : Services,
   cfg : AppConfig
-) -> &Runnable {
+) -> &@ports.Runnable {
   match input.command {
-    Ls => (LsCommand::{ tasks: svc.tasks } : &Runnable)
-    Open =>
-      (OpenCommand::{
-        selector: svc.selector,
-        editor: svc.editor,
-        tasks: svc.tasks,
-      } : &Runnable)
+    Ls => @sub_commands.new_ls(svc.tasks)
+    Open => @sub_commands.new_open(svc.selector, svc.editor, svc.tasks)
     Status =>
-      (StatusCommand::{
-        selector: svc.selector,
-        repo: svc.repo_query,
-        tasks: svc.tasks,
-        params: input.params,
-      } : &Runnable)
+      @sub_commands.new_status(svc.selector, svc.repo_query, svc.tasks, input.params)
     Done =>
-      (DoneCommand::{
-        selector: svc.selector,
-        prompter: svc.prompter,
-        repo_query: svc.repo_query,
-        repo_mutator: svc.repo_mutator,
-        session: svc.session,
-        tasks: svc.tasks,
-      } : &Runnable)
+      @sub_commands.new_done(
+        svc.selector, svc.prompter, svc.repo_query, svc.repo_mutator,
+        svc.session, svc.tasks,
+      )
     New =>
-      (NewCommand::{
-        selector: svc.selector,
-        prompter: svc.prompter,
-        repo_query: svc.repo_query,
-        repo_mutator: svc.repo_mutator,
-        editor: svc.editor,
-        fs: svc.fs,
-        repo_finder: svc.repo_finder,
-        workspace_dir: cfg.workspace_dir,
-        config_dir: cfg.config_dir,
-      } : &Runnable)
+      @sub_commands.new_new(
+        svc.selector, svc.prompter, svc.repo_query, svc.repo_mutator,
+        svc.editor, svc.fs, svc.repo_finder, cfg.workspace_dir, cfg.config_dir,
+      )
   }
 }

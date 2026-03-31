@@ -63,7 +63,7 @@ pub(all) struct StatusCommand {
 
 ///|
 /// Displays task status: a table of all tasks with `--all`, or an interactive single-task detail view.
-impl Runnable for StatusCommand with run(self) {
+impl @ports.Runnable for StatusCommand with run(self) {
   let show_all = self.params.length() > 0 && self.params[0] == "--all"
   let task_list = match self.tasks.list() {
     Ok(t) => t

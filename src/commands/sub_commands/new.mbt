@@ -14,7 +14,7 @@ pub(all) struct NewCommand {
 
 ///|
 /// Guides the user through repo selection, branch selection, worktree creation, and editor launch.
-impl Runnable for NewCommand with run(self) {
+impl @ports.Runnable for NewCommand with run(self) {
   // Select repository
   let repo_dir = match self.select_repo() {
     Ok(r) => r

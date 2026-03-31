@@ -11,7 +11,7 @@ pub(all) struct DoneCommand {
 
 ///|
 /// Interactively selects a task, shows its status, confirms cleanup, then removes the worktree and optionally the branch.
-impl Runnable for DoneCommand with run(self) {
+impl @ports.Runnable for DoneCommand with run(self) {
   let task_list = match self.tasks.list() {
     Ok(t) => t
     Err(e) => { println("Error: \{e}"); return }

@@ -8,7 +8,7 @@ pub(all) struct OpenCommand {
 
 ///|
 /// Prompts the user to select a task, then launches the editor for its worktree.
-impl Runnable for OpenCommand with run(self) {
+impl @ports.Runnable for OpenCommand with run(self) {
   let task_list = match self.tasks.list() {
     Ok(t) => t
     Err(e) => { println("Error: \{e}"); return }
