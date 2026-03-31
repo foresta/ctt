@@ -1,7 +1,6 @@
 import {
   "foresta/ctt/cli",
   "foresta/ctt/commands",
-  "foresta/ctt/commands/sub_commands",
   "foresta/ctt/config",
   "foresta/ctt/ports",
   "foresta/ctt/services",

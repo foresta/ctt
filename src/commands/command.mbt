@@ -7,7 +7,7 @@ pub(all) enum Command {
   Done
   New
   Help
-} derive(Eq)
+}
 
 ///|
 /// Parsed CLI input containing the resolved command and its parameters.
