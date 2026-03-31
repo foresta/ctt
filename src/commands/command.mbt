@@ -6,7 +6,8 @@ pub(all) enum Command {
   Status
   Done
   New
-}
+  Help
+} derive(Eq)
 
 ///|
 /// Parsed CLI input containing the resolved command and its parameters.

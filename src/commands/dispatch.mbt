@@ -6,6 +6,7 @@ pub fn dispatch(
   cfg : AppConfig
 ) -> &@ports.Runnable {
   match input.command {
+    Help => @sub_commands.new_help()
     Ls => @sub_commands.new_ls(svc.tasks)
     Open => @sub_commands.new_open(svc.editor, svc.tasks)
     Status =>

@@ -94,10 +94,13 @@ async fn render(
 ///|
 /// Entry point: parses CLI args, validates config, wires dependencies, and runs the dispatched command.
 async fn main {
-  let input = try {
-    @cli.parse(@env.args())
-  } catch {
-    _ => return
+  let input = @cli.parse(@env.args())
+  // Help doesn't need config validation or DI
+  if input.command == Help {
+    let help = @sub_commands.new_help()
+    let result = try { help.run() } catch { _ => return }
+    render(result, @services.new_selector(), @services.new_prompter())
+    return
   }
   try {
     @config.validate()

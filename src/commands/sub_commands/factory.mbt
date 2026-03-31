@@ -1,4 +1,10 @@
 ///|
+/// Create a HelpCommand as a Runnable.
+pub fn new_help() -> &@ports.Runnable {
+  HelpCommand::{}
+}
+
+///|
 /// Create an LsCommand as a Runnable.
 pub fn new_ls(tasks : &@task.TaskRepository) -> &@ports.Runnable {
   LsCommand::{ tasks, }
