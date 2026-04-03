@@ -50,7 +50,7 @@ impl @ports.Runnable for DoneCommand with run(self) {
           "Are you sure you want to remove it? [y/N] "
         }
       }
-      @ports.Sequence(
+      @ports.Sequence([
         @ports.Lines(message),
         @ports.Confirm(
           prompt=confirm_prompt,
@@ -60,7 +60,7 @@ impl @ports.Runnable for DoneCommand with run(self) {
             )
           },
         ),
-      )
+      ])
     },
   )
 }
@@ -100,7 +100,7 @@ async fn done_after_confirm(
   if t.branch != "" {
     match repo_query.branch_exists(git_dir=git_dir, branch=t.branch) {
       Ok(true) =>
-        return @ports.Sequence(
+        return @ports.Sequence([
           @ports.Lines(output),
           @ports.Confirm(
             prompt="Delete local branch '" + t.branch + "'? [y/N] ",
@@ -110,7 +110,7 @@ async fn done_after_confirm(
               )
             },
           ),
-        )
+        ])
       _ => ()
     }
   }
@@ -129,7 +129,7 @@ async fn done_delete_branch(
   match repo_mutator.delete_branch(git_dir=git_dir, branch=branch, force=false) {
     Ok(_) => @ports.Lines(["Task completed: " + name])
     Err(_) =>
-      @ports.Sequence(
+      @ports.Sequence([
         @ports.Lines(["Warning: branch '" + branch + "' is not fully merged."]),
         @ports.Confirm(
           prompt="Force delete? [y/N] ",
@@ -142,6 +142,6 @@ async fn done_delete_branch(
             @ports.Lines(["Task completed: " + name])
           },
         ),
-      )
+      ])
   }
 }

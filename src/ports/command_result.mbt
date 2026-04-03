@@ -11,8 +11,8 @@ pub(all) enum CommandResult {
   Empty
   /// An error message to display.
   Error(String)
-  /// Execute two CommandResults sequentially.
-  Sequence(CommandResult, CommandResult)
+  /// Execute multiple CommandResults sequentially.
+  Sequence(Array[CommandResult])
   /// Execute a CommandResult, then lazily evaluate the next.
   Then(
     first~ : CommandResult,

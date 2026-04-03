@@ -123,7 +123,7 @@ async fn NewCommand::create_branch_and_open(
 ) -> @ports.CommandResult {
   let workdir = wt_dir + "/" + repo_name + "__" + branch
   if self.fs.path_exists(path=workdir) {
-    return @ports.Sequence(
+    return @ports.Sequence([
       @ports.Lines(["Directory already exists: " + workdir]),
       @ports.Confirm(
         prompt="Use existing worktree? [y/N] ",
@@ -131,7 +131,7 @@ async fn NewCommand::create_branch_and_open(
           self.link_and_open(repo_dir, repo_name, workdir, branch, true)
         },
       ),
-    )
+    ])
   }
   match self.repo_mutator.create_branch_worktree(
     repo_dir=repo_dir, workdir=workdir, branch=branch,
@@ -153,7 +153,7 @@ async fn NewCommand::checkout_and_open(
 ) -> @ports.CommandResult {
   let workdir = wt_dir + "/" + repo_name + "__" + branch
   if self.fs.path_exists(path=workdir) {
-    return @ports.Sequence(
+    return @ports.Sequence([
       @ports.Lines(["Directory already exists: " + workdir]),
       @ports.Confirm(
         prompt="Use existing worktree? [y/N] ",
@@ -161,7 +161,7 @@ async fn NewCommand::checkout_and_open(
           self.link_and_open(repo_dir, repo_name, workdir, branch, true)
         },
       ),
-    )
+    ])
   }
   match self.repo_mutator.checkout_worktree(
     repo_dir=repo_dir, workdir=workdir, branch=branch,

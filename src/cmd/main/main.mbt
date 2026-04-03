@@ -33,10 +33,10 @@ async fn render(
     Table(rows) => renderer.print_table(rows)
     Empty => ()
     Error(msg) => renderer.print_error(msg)
-    Sequence(first, second) => {
-      render(first, renderer, selector, prompter)
-      render(second, renderer, selector, prompter)
-    }
+    Sequence(results) =>
+      for result in results {
+        render(result, renderer, selector, prompter)
+      }
     Then(first~, next~) => {
       render(first, renderer, selector, prompter)
       render(next(), renderer, selector, prompter)
