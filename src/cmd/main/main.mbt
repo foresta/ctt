@@ -33,18 +33,31 @@ async fn render(
     Table(rows) => renderer.print_table(rows)
     Empty => ()
     Error(msg) => renderer.print_error(msg)
-    Confirm(message~, prompt~, on_yes~) => {
+    Sequence(first, second) => {
+      render(first, renderer, selector, prompter)
+      render(second, renderer, selector, prompter)
+    }
+    WithMessage(message~, next~) => {
       renderer.print_lines(message)
+      render(next(), renderer, selector, prompter)
+    }
+    Confirm(prompt~, on_yes~) => {
       match prompter.confirm(prompt=prompt) {
         Ok(true) => render(on_yes(), renderer, selector, prompter)
         _ => renderer.print_cancelled()
       }
     }
-    Select(message~, items~, prompt~, on_select~) => {
-      renderer.print_lines(message)
-      match selector.select(items=items, prompt=prompt) {
+    Select(items~, prompt~, accept_empty~, on_select~) => {
+      match selector.select(items=items, prompt=prompt, accept_empty=accept_empty) {
         Ok(Some(selected)) =>
           render(on_select(selected), renderer, selector, prompter)
+        _ => renderer.print_cancelled()
+      }
+    }
+    Input(prompt~, on_input~) => {
+      match prompter.read_line(prompt=prompt) {
+        Ok(input) if input != "" =>
+          render(on_input(input), renderer, selector, prompter)
         _ => renderer.print_cancelled()
       }
     }

@@ -11,19 +11,31 @@ pub(all) enum CommandResult {
   Empty
   /// An error message to display.
   Error(String)
-  /// Show a message, then ask the user for yes/no confirmation.
+  /// Execute two CommandResults sequentially.
+  Sequence(CommandResult, CommandResult)
+  /// Display a message, then evaluate the next CommandResult lazily.
+  WithMessage(
+    message~ : Array[String],
+    next~ : async () -> CommandResult,
+  )
+  /// Ask the user for yes/no confirmation.
   /// If yes, evaluate the continuation to get the next result.
   Confirm(
-    message~ : Array[String],
     prompt~ : String,
     on_yes~ : async () -> CommandResult,
   )
-  /// Show a message, then ask the user to select from a list.
+  /// Ask the user to select from a list.
   /// Pass the selected item to the continuation to get the next result.
   Select(
-    message~ : Array[String],
     items~ : Array[String],
     prompt~ : String,
+    accept_empty~ : Bool,
     on_select~ : async (String) -> CommandResult,
+  )
+  /// Ask the user for free-text input.
+  /// Pass the entered text to the continuation to get the next result.
+  Input(
+    prompt~ : String,
+    on_input~ : async (String) -> CommandResult,
   )
 }
