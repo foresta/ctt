@@ -20,73 +20,32 @@ fn resolve_dependencies(
 }
 
 ///|
-/// Pads a string with trailing spaces to reach the given width.
-fn pad_right(s : String, width : Int) -> String {
-  let len = s.length()
-  if len >= width {
-    return s
-  }
-  let buf = StringBuilder::new()
-  buf.write_string(s)
-  for i = len; i < width; i = i + 1 {
-    buf.write_char(' ')
-  }
-  buf.to_string()
-}
-
-///|
-/// Renders a table as column-aligned text to stdout.
-fn print_table(rows : Array[Array[String]]) -> Unit {
-  let col_count = rows[0].length()
-  let widths = Array::make(col_count, 0)
-  for row in rows {
-    for i, cell in row {
-      if cell.length() > widths[i] {
-        widths[i] = cell.length()
-      }
-    }
-  }
-  for row in rows {
-    let buf = StringBuilder::new()
-    for i, cell in row {
-      if i > 0 {
-        buf.write_string("  ")
-      }
-      if i < col_count - 1 {
-        buf.write_string(pad_right(cell, widths[i]))
-      } else {
-        buf.write_string(cell)
-      }
-    }
-    println(buf.to_string())
-  }
-}
-
-///|
 /// Interprets a CommandResult tree, performing actual I/O.
-/// This is the only place in the application that calls println.
+/// Delegates output to the Renderer and interaction to ItemSelector/UserPrompter.
 async fn render(
   result : @ports.CommandResult,
+  renderer : &@ports.Renderer,
   selector : &@ports.ItemSelector,
   prompter : &@ports.UserPrompter
 ) -> Unit {
   match result {
-    Lines(lines) => lines.each(fn(l) { println(l) })
-    Table(rows) => print_table(rows)
+    Lines(lines) => renderer.print_lines(lines)
+    Table(rows) => renderer.print_table(rows)
     Empty => ()
-    Error(msg) => println("Error: " + msg)
+    Error(msg) => renderer.print_error(msg)
     Confirm(message~, prompt~, on_yes~) => {
-      message.each(fn(l) { println(l) })
+      renderer.print_lines(message)
       match prompter.confirm(prompt=prompt) {
-        Ok(true) => render(on_yes(), selector, prompter)
-        _ => println("Cancelled.")
+        Ok(true) => render(on_yes(), renderer, selector, prompter)
+        _ => renderer.print_cancelled()
       }
     }
     Select(message~, items~, prompt~, on_select~) => {
-      message.each(fn(l) { println(l) })
+      renderer.print_lines(message)
       match selector.select(items=items, prompt=prompt) {
-        Ok(Some(selected)) => render(on_select(selected), selector, prompter)
-        _ => println("Cancelled.")
+        Ok(Some(selected)) =>
+          render(on_select(selected), renderer, selector, prompter)
+        _ => renderer.print_cancelled()
       }
     }
   }
@@ -110,6 +69,7 @@ async fn main {
   }
   let (svc, cfg) = resolve_dependencies(cfg)
   let command = @commands.dispatch(input, svc, cfg)
+  let renderer = @services.new_console_renderer()
   let result = command.run()
-  render(result, svc.selector, svc.prompter)
+  render(result, renderer, svc.selector, svc.prompter)
 }
