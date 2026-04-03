@@ -60,3 +60,9 @@ pub fn new_task_repository(
 ) -> &@task.TaskRepository {
   OsTaskRepository::{ fs, workspace_dir }
 }
+
+///|
+/// Create a Renderer backed by console stdout.
+pub fn new_console_renderer() -> &@ports.Renderer {
+  ConsoleRenderer::{}
+}
