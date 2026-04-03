@@ -1,5 +1,4 @@
 import {
-  "foresta/ctt/commands/sub_commands",
   "foresta/ctt/ports",
   "foresta/ctt/task",
 }
