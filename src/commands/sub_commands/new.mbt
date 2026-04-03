@@ -25,13 +25,15 @@ impl @ports.Runnable for NewCommand with run(self) {
   }
   // Step 2: Select repository
   @ports.Select(
-    message=[], items=repos, prompt="Select Repository> ",
+    items=repos, prompt="Select Repository> ",
+    accept_empty=false,
     on_select=async fn(repo_dir) {
       let repo_name = extract_repo_name(repo_dir)
       let branches = self.list_all_branches(repo_dir)
       // Step 3: Select branch
       @ports.Select(
-        message=[], items=branches, prompt="Select or Type Branch for Worktree> ",
+        items=branches, prompt="Select Branch for Worktree> ",
+        accept_empty=false,
         on_select=fn(branch) {
           let actions = [
             "Checkout this branch",
@@ -39,7 +41,8 @@ impl @ports.Runnable for NewCommand with run(self) {
           ]
           // Step 4: Select action
           @ports.Select(
-            message=[], items=actions, prompt="Select action> ",
+            items=actions, prompt="Select action> ",
+            accept_empty=false,
             on_select=async fn(action) {
               // Step 5: Execute
               self.execute(repo_dir, repo_name, branch, action)
@@ -90,7 +93,19 @@ async fn NewCommand::execute(
 ) -> @ports.CommandResult {
   let wt_dir = @task.worktree_dir(self.workspace_dir)
   if action == "Create new branch from this branch" {
-    self.create_branch_and_open(repo_dir, repo_name, branch, wt_dir)
+    @ports.Input(
+      prompt="New branch name> ",
+      on_input=fn(new_branch) {
+        @ports.Then(
+          first=@ports.Lines(["Creating branch '" + new_branch + "' from '" + branch + "'..."]),
+          next=async fn() {
+            self.create_branch_and_open(
+              repo_dir, repo_name, new_branch, wt_dir, base_branch=branch,
+            )
+          },
+        )
+      },
+    )
   } else {
     self.checkout_and_open(repo_dir, repo_name, branch, wt_dir)
   }
@@ -103,21 +118,24 @@ async fn NewCommand::create_branch_and_open(
   repo_dir : String,
   repo_name : String,
   branch : String,
-  wt_dir : String
+  wt_dir : String,
+  base_branch~ : String
 ) -> @ports.CommandResult {
   let workdir = wt_dir + "/" + repo_name + "__" + branch
   if self.fs.path_exists(path=workdir) {
-    return @ports.Confirm(
-      message=["Directory already exists: " + workdir],
-      prompt="Use existing worktree? [y/N] ",
-      on_yes=async fn() {
-        self.link_and_open(repo_dir, repo_name, workdir, branch, true)
-      },
-    )
+    return @ports.Sequence([
+      @ports.Lines(["Directory already exists: " + workdir]),
+      @ports.Confirm(
+        prompt="Use existing worktree? [y/N] ",
+        on_yes=async fn() {
+          self.link_and_open(repo_dir, repo_name, workdir, branch, true)
+        },
+      ),
+    ])
   }
   match self.repo_mutator.create_branch_worktree(
     repo_dir=repo_dir, workdir=workdir, branch=branch,
-    base_branch=Some(branch),
+    base_branch=Some(base_branch),
   ) {
     Ok(_) => self.link_and_open(repo_dir, repo_name, workdir, branch, false)
     Err(e) => @ports.Lines(["Error: " + e])
@@ -135,13 +153,15 @@ async fn NewCommand::checkout_and_open(
 ) -> @ports.CommandResult {
   let workdir = wt_dir + "/" + repo_name + "__" + branch
   if self.fs.path_exists(path=workdir) {
-    return @ports.Confirm(
-      message=["Directory already exists: " + workdir],
-      prompt="Use existing worktree? [y/N] ",
-      on_yes=async fn() {
-        self.link_and_open(repo_dir, repo_name, workdir, branch, true)
-      },
-    )
+    return @ports.Sequence([
+      @ports.Lines(["Directory already exists: " + workdir]),
+      @ports.Confirm(
+        prompt="Use existing worktree? [y/N] ",
+        on_yes=async fn() {
+          self.link_and_open(repo_dir, repo_name, workdir, branch, true)
+        },
+      ),
+    ])
   }
   match self.repo_mutator.checkout_worktree(
     repo_dir=repo_dir, workdir=workdir, branch=branch,

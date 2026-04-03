@@ -40,9 +40,9 @@ impl @ports.Runnable for StatusCommand with run(self) {
   let names = task_list.map(fn(t) { t.name })
   let repo = self.repo
   @ports.Select(
-    message=[],
     items=names,
     prompt="Select Task> ",
+    accept_empty=false,
     on_select=async fn(name) {
       match task_list.iter().find_first(fn(t) { t.name == name }) {
         Some(task) => build_status_table(repo, [task])

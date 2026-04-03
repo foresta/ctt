@@ -18,9 +18,9 @@ impl @ports.Runnable for OpenCommand with run(self) {
   let names = task_list.map(fn(t) { t.name })
   let editor = self.editor
   @ports.Select(
-    message=[],
     items=names,
     prompt="Select Task> ",
+    accept_empty=false,
     on_select=async fn(name) {
       match task_list.iter().find_first(fn(t) { t.name == name }) {
         Some(task) => {

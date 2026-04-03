@@ -22,9 +22,9 @@ impl @ports.Runnable for DoneCommand with run(self) {
   let repo_mutator = self.repo_mutator
   let session = self.session
   @ports.Select(
-    message=[],
     items=names,
     prompt="Select Task to Complete> ",
+    accept_empty=false,
     on_select=async fn(name) {
       let t = match task_list.iter().find_first(fn(t) { t.name == name }) {
         Some(t) => t
@@ -50,15 +50,17 @@ impl @ports.Runnable for DoneCommand with run(self) {
           "Are you sure you want to remove it? [y/N] "
         }
       }
-      @ports.Confirm(
-        message=message,
-        prompt=confirm_prompt,
-        on_yes=async fn() {
-          done_after_confirm(
-            repo_query, repo_mutator, session, t, name,
-          )
-        },
-      )
+      @ports.Sequence([
+        @ports.Lines(message),
+        @ports.Confirm(
+          prompt=confirm_prompt,
+          on_yes=async fn() {
+            done_after_confirm(
+              repo_query, repo_mutator, session, t, name,
+            )
+          },
+        ),
+      ])
     },
   )
 }
@@ -98,15 +100,17 @@ async fn done_after_confirm(
   if t.branch != "" {
     match repo_query.branch_exists(git_dir=git_dir, branch=t.branch) {
       Ok(true) =>
-        return @ports.Confirm(
-          message=output,
-          prompt="Delete local branch '" + t.branch + "'? [y/N] ",
-          on_yes=async fn() {
-            done_delete_branch(
-              repo_mutator, git_dir, t.branch, name,
-            )
-          },
-        )
+        return @ports.Sequence([
+          @ports.Lines(output),
+          @ports.Confirm(
+            prompt="Delete local branch '" + t.branch + "'? [y/N] ",
+            on_yes=async fn() {
+              done_delete_branch(
+                repo_mutator, git_dir, t.branch, name,
+              )
+            },
+          ),
+        ])
       _ => ()
     }
   }
@@ -125,17 +129,19 @@ async fn done_delete_branch(
   match repo_mutator.delete_branch(git_dir=git_dir, branch=branch, force=false) {
     Ok(_) => @ports.Lines(["Task completed: " + name])
     Err(_) =>
-      @ports.Confirm(
-        message=["Warning: branch '" + branch + "' is not fully merged."],
-        prompt="Force delete? [y/N] ",
-        on_yes=async fn() {
-          let _ = repo_mutator.delete_branch(
-            git_dir=git_dir,
-            branch=branch,
-            force=true,
-          )
-          @ports.Lines(["Task completed: " + name])
-        },
-      )
+      @ports.Sequence([
+        @ports.Lines(["Warning: branch '" + branch + "' is not fully merged."]),
+        @ports.Confirm(
+          prompt="Force delete? [y/N] ",
+          on_yes=async fn() {
+            let _ = repo_mutator.delete_branch(
+              git_dir=git_dir,
+              branch=branch,
+              force=true,
+            )
+            @ports.Lines(["Task completed: " + name])
+          },
+        ),
+      ])
   }
 }
