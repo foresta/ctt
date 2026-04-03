@@ -13,9 +13,9 @@ pub(all) enum CommandResult {
   Error(String)
   /// Execute two CommandResults sequentially.
   Sequence(CommandResult, CommandResult)
-  /// Display a message, then evaluate the next CommandResult lazily.
-  WithMessage(
-    message~ : Array[String],
+  /// Execute a CommandResult, then lazily evaluate the next.
+  Then(
+    first~ : CommandResult,
     next~ : async () -> CommandResult,
   )
   /// Ask the user for yes/no confirmation.

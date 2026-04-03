@@ -96,8 +96,8 @@ async fn NewCommand::execute(
     @ports.Input(
       prompt="New branch name> ",
       on_input=fn(new_branch) {
-        @ports.WithMessage(
-          message=["Creating branch '" + new_branch + "' from '" + branch + "'..."],
+        @ports.Then(
+          first=@ports.Lines(["Creating branch '" + new_branch + "' from '" + branch + "'..."]),
           next=async fn() {
             self.create_branch_and_open(
               repo_dir, repo_name, new_branch, wt_dir, base_branch=branch,

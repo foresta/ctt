@@ -37,8 +37,8 @@ async fn render(
       render(first, renderer, selector, prompter)
       render(second, renderer, selector, prompter)
     }
-    WithMessage(message~, next~) => {
-      renderer.print_lines(message)
+    Then(first~, next~) => {
+      render(first, renderer, selector, prompter)
       render(next(), renderer, selector, prompter)
     }
     Confirm(prompt~, on_yes~) => {
