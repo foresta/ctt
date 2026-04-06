@@ -11,7 +11,7 @@ impl @ports.UserPrompter for ShellPrompter with confirm(self, prompt~) {
     "sh",
     ["-c", "read line && echo \"$line\""],
   )
-  let answer = output.text().trim_end().to_string()
+  let answer = decode_process_output(output.binary()).trim_end().to_string()
   Ok(answer == "y" || answer == "Y")
 }
 
@@ -24,5 +24,5 @@ impl @ports.UserPrompter for ShellPrompter with read_line(self, prompt~) {
     "sh",
     ["-c", "read line && echo \"$line\""],
   )
-  Ok(output.text().trim_end().to_string())
+  Ok(decode_process_output(output.binary()).trim_end().to_string())
 }

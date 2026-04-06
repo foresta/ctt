@@ -13,8 +13,7 @@ impl @ports.RepositoryFinder for FindCommandFinder with find_git_repos(self, wor
   if status != 0 {
     return Err("find failed")
   }
-  let repos : Array[String] = output
-    .text()
+  let repos : Array[String] = decode_process_output(output.binary())
     .trim_end()
     .to_string()
     .split("\n")

@@ -23,7 +23,7 @@ impl @ports.ItemSelector for FzfSelector with select(self, items~, prompt~, acce
   if status != 0 {
     return Ok(None)
   }
-  let result = output.text().trim_end().to_string()
+  let result = decode_process_output(output.binary()).trim_end().to_string()
   Ok(if result == "" { None } else { Some(result) })
 }
 
@@ -41,7 +41,7 @@ impl @ports.ItemSelector for FzfSelector with select_with_query(self, items~, pr
     stdin=read_end,
   )
   read_end.close()
-  let text = output.text().trim_end().to_string()
+  let text = decode_process_output(output.binary()).trim_end().to_string()
   let lines : Array[String] = text
     .split("\n")
     .map(fn(s) { s.to_string() })

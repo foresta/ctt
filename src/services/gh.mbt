@@ -16,7 +16,7 @@ impl @ports.PullRequestService for GhCli with get_status(self, repo_slug~, branc
   if status != 0 {
     return Ok(@ports.PrStatus::{ state: "", url: "" })
   }
-  let text = output.text().trim_end().to_string()
+  let text = decode_process_output(output.binary()).trim_end().to_string()
   if text == "" || text == "[]" {
     return Ok(@ports.PrStatus::{ state: "", url: "" })
   }

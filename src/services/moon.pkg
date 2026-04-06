@@ -4,6 +4,7 @@ import {
   "moonbitlang/async/process",
   "moonbitlang/async/io",
   "moonbitlang/async/pipe",
+  "moonbitlang/core/encoding/utf8",
   "moonbitlang/x/sys",
   "moonbitlang/x/fs" @xfs,
 }

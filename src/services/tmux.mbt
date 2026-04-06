@@ -23,7 +23,7 @@ impl @ports.SessionManager for TmuxSession with list_windows(self) {
   if status != 0 {
     return Ok([])
   }
-  let text = output.text().trim_end().to_string()
+  let text = decode_process_output(output.binary()).trim_end().to_string()
   if text == "" {
     return Ok([])
   }

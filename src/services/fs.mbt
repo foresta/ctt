@@ -49,7 +49,7 @@ impl @ports.FileSystem for OsFileSystem with create_symlink(self, src~, dst~) {
   let _ = self
   let (status, output) = @process.collect_output_merged("ln", ["-s", src, dst])
   if status != 0 {
-    return Err("symlink failed: " + output.text().trim_end().to_string())
+    return Err("symlink failed: " + decode_process_output(output.binary()).trim_end().to_string())
   }
   Ok(())
 }
