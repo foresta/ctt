@@ -16,14 +16,14 @@ impl @ports.SessionManager for TmuxSession with is_active(self) {
 /// List all window names in the current tmux session.
 impl @ports.SessionManager for TmuxSession with list_windows(self) {
   let _ = self
-  let (status, output) = @process.collect_output_merged(
+  let (status, output) = run_and_collect_merged(
     "tmux",
     ["list-windows", "-F", "#{window_name}"],
   )
   if status != 0 {
     return Ok([])
   }
-  let text = decode_process_output(output.binary()).trim_end().to_string()
+  let text = output.trim_end().to_string()
   if text == "" {
     return Ok([])
   }

@@ -6,14 +6,14 @@ pub(all) struct FindCommandFinder {}
 /// Discover git repositories under the workspace directory up to max_depth.
 impl @ports.RepositoryFinder for FindCommandFinder with find_git_repos(self, workspace~, max_depth~) {
   let _ = self
-  let (status, output) = @process.collect_output_merged(
+  let (status, output) = run_and_collect_merged(
     "find",
     [workspace, "-maxdepth", max_depth.to_string(), "-type", "d", "-name", ".git", "-prune"],
   )
   if status != 0 {
     return Err("find failed")
   }
-  let repos : Array[String] = decode_process_output(output.binary())
+  let repos : Array[String] = output
     .trim_end()
     .to_string()
     .split("\n")

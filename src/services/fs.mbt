@@ -47,9 +47,9 @@ impl @ports.FileSystem for OsFileSystem with create_dir(self, path~) {
 /// Create a symbolic link from src to dst.
 impl @ports.FileSystem for OsFileSystem with create_symlink(self, src~, dst~) {
   let _ = self
-  let (status, output) = @process.collect_output_merged("ln", ["-s", src, dst])
+  let (status, output) = run_and_collect_merged("ln", ["-s", src, dst])
   if status != 0 {
-    return Err("symlink failed: " + decode_process_output(output.binary()).trim_end().to_string())
+    return Err("symlink failed: " + output.trim_end().to_string())
   }
   Ok(())
 }
