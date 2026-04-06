@@ -5,7 +5,7 @@ pub(all) struct GitCli {}
 ///|
 /// Run a git command and return (exit_status, trimmed_output).
 async fn git_run(args : Array[String], cwd~ : String = "") -> (Int, String) {
-  let (status, output) = run_and_collect_merged("git", args, cwd=cwd)
+  let (status, output) = exec_cmd("git", args, cwd=cwd)
   (status, output.trim_end().to_string())
 }
 

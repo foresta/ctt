@@ -1,7 +1,7 @@
 ///|
 /// Wrapper around @process.collect_output_merged that returns decoded String
 /// instead of raw &Data. Uses lossy UTF-8 decoding to avoid Malformed errors.
-async fn run_and_collect_merged(
+async fn exec_cmd(
   cmd : String,
   args : Array[String],
   cwd~ : String = "",
@@ -19,7 +19,7 @@ async fn run_and_collect_merged(
 ///|
 /// Wrapper around @process.collect_stdout that returns decoded String
 /// instead of raw &Data. Uses lossy UTF-8 decoding to avoid Malformed errors.
-async fn run_and_collect_stdout(
+async fn exec_cmd_stdout(
   cmd : String,
   args : Array[String],
   stdin? : &@process.ProcessInput

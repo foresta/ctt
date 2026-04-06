@@ -14,7 +14,7 @@ impl @ports.ItemSelector for FzfSelector with select(self, items~, prompt~, acce
   if not(accept_empty) {
     args.push("--bind=enter:accept-non-empty")
   }
-  let (status, output) = run_and_collect_stdout(
+  let (status, output) = exec_cmd_stdout(
     "fzf",
     args,
     stdin=read_end,
@@ -35,7 +35,7 @@ impl @ports.ItemSelector for FzfSelector with select_with_query(self, items~, pr
   let (read_end, write_end) = @pipe.pipe()
   write_end.write(input)
   write_end.close()
-  let (_, output) = run_and_collect_stdout(
+  let (_, output) = exec_cmd_stdout(
     "fzf",
     ["--print-query", "--prompt=\{prompt}"],
     stdin=read_end,

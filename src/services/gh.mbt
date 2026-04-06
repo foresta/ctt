@@ -6,7 +6,7 @@ pub(all) struct GhCli {}
 /// Get the PR state and URL for a branch in the given repository.
 impl @ports.PullRequestService for GhCli with get_status(self, repo_slug~, branch~) {
   let _ = self
-  let (status, output) = run_and_collect_merged(
+  let (status, output) = exec_cmd(
     "gh",
     [
       "pr", "list", "--repo", repo_slug, "--head", branch,

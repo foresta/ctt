@@ -7,7 +7,7 @@ pub(all) struct ShellPrompter {}
 impl @ports.UserPrompter for ShellPrompter with confirm(self, prompt~) {
   let _ = self
   println(prompt)
-  let (_, output) = run_and_collect_merged(
+  let (_, output) = exec_cmd(
     "sh",
     ["-c", "read line && echo \"$line\""],
   )
@@ -20,7 +20,7 @@ impl @ports.UserPrompter for ShellPrompter with confirm(self, prompt~) {
 impl @ports.UserPrompter for ShellPrompter with read_line(self, prompt~) {
   let _ = self
   println(prompt)
-  let (_, output) = run_and_collect_merged(
+  let (_, output) = exec_cmd(
     "sh",
     ["-c", "read line && echo \"$line\""],
   )
