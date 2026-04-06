@@ -14,7 +14,7 @@ impl @ports.ItemSelector for FzfSelector with select(self, items~, prompt~, acce
   if not(accept_empty) {
     args.push("--bind=enter:accept-non-empty")
   }
-  let (status, output) = @process.collect_stdout(
+  let (status, output) = exec_cmd_stdout(
     "fzf",
     args,
     stdin=read_end,
@@ -23,7 +23,7 @@ impl @ports.ItemSelector for FzfSelector with select(self, items~, prompt~, acce
   if status != 0 {
     return Ok(None)
   }
-  let result = output.text().trim_end().to_string()
+  let result = output.trim_end().to_string()
   Ok(if result == "" { None } else { Some(result) })
 }
 
@@ -35,13 +35,13 @@ impl @ports.ItemSelector for FzfSelector with select_with_query(self, items~, pr
   let (read_end, write_end) = @pipe.pipe()
   write_end.write(input)
   write_end.close()
-  let (_, output) = @process.collect_stdout(
+  let (_, output) = exec_cmd_stdout(
     "fzf",
     ["--print-query", "--prompt=\{prompt}"],
     stdin=read_end,
   )
   read_end.close()
-  let text = output.text().trim_end().to_string()
+  let text = output.trim_end().to_string()
   let lines : Array[String] = text
     .split("\n")
     .map(fn(s) { s.to_string() })
