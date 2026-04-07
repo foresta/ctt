@@ -198,14 +198,14 @@ async fn NewCommand::do_link_ignored_files(
 ) -> Array[String] {
   let output : Array[String] = []
   let ignore_file = self.config_dir + "/.worktree-link-ignore"
-  let skip_patterns : Array[String] = []
+  let skip_patterns : Array[@glob.GlobPattern] = []
   if self.fs.path_exists(path=ignore_file) {
     match self.fs.read_file_to_string(path=ignore_file) {
       Ok(content) =>
         for part in content.split("\n") {
-          let line = part.to_string().trim_end().to_string()
-          if line != "" && not(line.has_prefix("#")) {
-            skip_patterns.push(line)
+          match @glob.parse(part.to_string()) {
+            Some(pat) => skip_patterns.push(pat)
+            None => ()
           }
         }
       Err(_) => ()
@@ -222,13 +222,9 @@ async fn NewCommand::do_link_ignored_files(
     if not(self.fs.path_exists(path=src)) {
       continue
     }
-    let mut skip = false
-    for pattern in skip_patterns {
-      if path == pattern {
-        skip = true
-        break
-      }
-    }
+    let skip = skip_patterns.fold(init=false, fn(acc, pattern) {
+      if pattern.matches(path) { not(pattern.negated) } else { acc }
+    })
     if skip || self.fs.path_exists(path=dst) {
       continue
     }
