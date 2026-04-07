@@ -17,7 +17,7 @@ run: build
 install: build
 	mkdir -p $(BIN_DIR) $(CONFIG_DIR)
 	cp $(SRC_DIR)/_build/native/release/build/cmd/main/main.exe $(BIN_DIR)/ctt
-	cp .worktree-link-ignore $(CONFIG_DIR)/.worktree-link-ignore
+	test -f $(CONFIG_DIR)/.worktree-link-ignore || cp .worktree-link-ignore $(CONFIG_DIR)/.worktree-link-ignore
 
 uninstall:
 	rm -f $(BIN_DIR)/ctt

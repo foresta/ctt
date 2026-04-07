@@ -40,6 +40,33 @@ ctt <command>
 - `ctt status` - Show task status (use `--all` for all tasks)
 - `ctt done` - Complete a task and remove its worktree
 
+## Configuration
+
+### `.worktree-link-ignore`
+
+`~/.config/ctt/.worktree-link-ignore` controls which git-ignored files are **not** symlinked into worktrees. The syntax follows `.gitignore`:
+
+```gitignore
+# Comments start with #
+.DS_Store
+*.log
+build/
+**/node_modules
+!important.log
+```
+
+| Pattern | Description |
+|---------|-------------|
+| `*` | Matches any characters except `/` |
+| `**` | Matches any characters including `/` (crosses directory boundaries) |
+| `?` | Matches a single character except `/` |
+| `/pattern` | Anchored to root — matches only at the top level |
+| `pattern/` | Matches directories (trailing slash is stripped) |
+| `!pattern` | Negation — re-includes a previously excluded file |
+| `# text` | Comment line (ignored) |
+
+Patterns without `/` match against any path component (e.g., `*.log` matches `build/debug.log`). Patterns containing `/` are matched against the full relative path.
+
 ## Development
 
 ```bash
