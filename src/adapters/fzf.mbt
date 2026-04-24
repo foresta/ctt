@@ -4,17 +4,14 @@ pub(all) struct FzfSelector {}
 
 ///|
 /// Select a single item from the list using fzf.
-impl @ports.ItemSelector for FzfSelector with select(self, items~, prompt~, accept_empty~) {
+impl @ports.ItemSelector for FzfSelector with select(self, items~, prompt~) {
   let _ = self
   let input = items.join("\n")
   let (read_end, write_end) = @pipe.pipe()
   write_end.write(input)
   write_end.close()
-  let args : Array[String] = ["--prompt=\{prompt}"]
-  if not(accept_empty) {
-    args.push("--bind=enter:accept-non-empty")
-  }
-  let (status, output) = exec_cmd_stdout(
+  let args : Array[String] = ["--prompt=\{prompt}", "--bind=enter:accept-non-empty"]
+  let (status, output) = @proc.exec_cmd_stdout(
     "fzf",
     args,
     stdin=read_end,
@@ -35,7 +32,7 @@ impl @ports.ItemSelector for FzfSelector with select_with_query(self, items~, pr
   let (read_end, write_end) = @pipe.pipe()
   write_end.write(input)
   write_end.close()
-  let (_, output) = exec_cmd_stdout(
+  let (_, output) = @proc.exec_cmd_stdout(
     "fzf",
     ["--print-query", "--prompt=\{prompt}"],
     stdin=read_end,

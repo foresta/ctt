@@ -1,12 +1,25 @@
 ///|
-/// Adapter that implements RepositoryQuery and RepositoryMutator ports using the git CLI.
+/// Adapter that implements the Repository port using the git CLI.
 pub(all) struct GitCli {}
 
 ///|
 /// Run a git command and return (exit_status, trimmed_output).
 async fn git_run(args : Array[String], cwd~ : String = "") -> (Int, String) {
-  let (status, output) = exec_cmd("git", args, cwd=cwd)
+  let (status, output) = @proc.exec_cmd("git", args, cwd=cwd)
   (status, output.trim_end().to_string())
+}
+
+///|
+/// Resolve the git common directory for a worktree.
+async fn resolve_git_dir(workdir : String) -> Result[String, String] {
+  let (status, output) = git_run(
+    ["-C", workdir, "rev-parse", "--git-common-dir"],
+  )
+  if status != 0 || output == "" {
+    Err("failed to get git common dir")
+  } else {
+    Ok(output)
+  }
 }
 
 ///|
@@ -29,8 +42,14 @@ fn extract_repo_slug_impl(remote_url : String) -> String {
 }
 
 ///|
+impl @ports.VCS for GitCli with repo_marker_name(self) {
+  let _ = self
+  ".git"
+}
+
+///|
 /// Gather branch, uncommitted changes, commits ahead, and PR status for a worktree.
-impl @ports.RepositoryQuery for GitCli with get_task_status(self, name~, workdir~) {
+impl @ports.VCS for GitCli with get_worktree_status(self, name~, workdir~) {
   let _ = self
   let (_, branch) = git_run(["-C", workdir, "rev-parse", "--abbrev-ref", "HEAD"])
   let (_, uc_output) = git_run(["-C", workdir, "status", "--porcelain"])
@@ -65,7 +84,7 @@ impl @ports.RepositoryQuery for GitCli with get_task_status(self, name~, workdir
       }
     }
   }
-  let status : @ports.TaskStatus = if pr_state == "MERGED" {
+  let status : @ports.WorktreeStatus = if pr_state == "MERGED" {
     Merged
   } else if pr_state == "OPEN" {
     PrOpen
@@ -74,12 +93,12 @@ impl @ports.RepositoryQuery for GitCli with get_task_status(self, name~, workdir
   } else {
     NoChanges
   }
-  Ok(@ports.TaskInfo::{ name, status, branch, uncommitted, commits_ahead, pr_url })
+  Ok(@ports.WorktreeInfo::{ name, status, branch, uncommitted, commits_ahead, pr_url })
 }
 
 ///|
 /// List local and remote branches for the given repository directory.
-impl @ports.RepositoryQuery for GitCli with list_branches(self, repo_dir~) {
+impl @ports.VCS for GitCli with list_branches(self, repo_dir~) {
   let _ = self
   let (_, local_output) = git_run(
     ["branch", "--format=%(refname:short)"],
@@ -113,23 +132,13 @@ impl @ports.RepositoryQuery for GitCli with list_branches(self, repo_dir~) {
 }
 
 ///|
-/// Return the git common directory shared across worktrees.
-impl @ports.RepositoryQuery for GitCli with common_dir(self, workdir~) {
+/// Check whether a branch exists in the given worktree's repository.
+impl @ports.VCS for GitCli with branch_exists(self, workdir~, branch~) {
   let _ = self
-  let (status, output) = git_run(
-    ["-C", workdir, "rev-parse", "--git-common-dir"],
-  )
-  if status != 0 || output == "" {
-    Err("failed to get git common dir")
-  } else {
-    Ok(output)
+  let git_dir = match resolve_git_dir(workdir) {
+    Ok(d) => d
+    Err(e) => return Err(e)
   }
-}
-
-///|
-/// Check whether a branch exists in the given git directory.
-impl @ports.RepositoryQuery for GitCli with branch_exists(self, git_dir~, branch~) {
-  let _ = self
   let (status, output) = git_run(
     ["--git-dir=" + git_dir, "branch", "--list", branch],
   )
@@ -138,7 +147,7 @@ impl @ports.RepositoryQuery for GitCli with branch_exists(self, git_dir~, branch
 
 ///|
 /// List files and directories ignored by .gitignore.
-impl @ports.RepositoryQuery for GitCli with list_ignored_files(self, repo_dir~) {
+impl @ports.VCS for GitCli with list_ignored_files(self, repo_dir~) {
   let _ = self
   let (status, output) = git_run(
     ["ls-files", "--others", "--ignored", "--exclude-standard", "--directory"],
@@ -164,7 +173,7 @@ impl @ports.RepositoryQuery for GitCli with list_ignored_files(self, repo_dir~) 
 
 ///|
 /// Create a new worktree with a new branch, optionally based on a given branch.
-impl @ports.RepositoryMutator for GitCli with create_branch_worktree(
+impl @ports.VCS for GitCli with create_branch_worktree(
   self, repo_dir~, workdir~, branch~, base_branch~
 ) {
   let _ = self
@@ -192,7 +201,7 @@ impl @ports.RepositoryMutator for GitCli with create_branch_worktree(
 
 ///|
 /// Create a worktree that checks out an existing branch.
-impl @ports.RepositoryMutator for GitCli with checkout_worktree(
+impl @ports.VCS for GitCli with checkout_worktree(
   self, repo_dir~, workdir~, branch~
 ) {
   let _ = self
@@ -207,11 +216,13 @@ impl @ports.RepositoryMutator for GitCli with checkout_worktree(
 }
 
 ///|
-/// Force-remove a worktree by its working directory path.
-impl @ports.RepositoryMutator for GitCli with remove_worktree(
-  self, git_dir~, workdir~
-) {
+/// Remove a worktree by its working directory path.
+impl @ports.VCS for GitCli with remove_worktree(self, workdir~) {
   let _ = self
+  let git_dir = match resolve_git_dir(workdir) {
+    Ok(d) => d
+    Err(e) => return Err(e)
+  }
   let (status, output) = git_run(
     ["--git-dir=" + git_dir, "worktree", "remove", workdir, "--force"],
   )
@@ -223,10 +234,14 @@ impl @ports.RepositoryMutator for GitCli with remove_worktree(
 
 ///|
 /// Delete a branch, optionally with force.
-impl @ports.RepositoryMutator for GitCli with delete_branch(
-  self, git_dir~, branch~, force~
+impl @ports.VCS for GitCli with delete_branch(
+  self, workdir~, branch~, force~
 ) {
   let _ = self
+  let git_dir = match resolve_git_dir(workdir) {
+    Ok(d) => d
+    Err(e) => return Err(e)
+  }
   let flag = if force { "-D" } else { "-d" }
   let (status, output) = git_run(
     ["--git-dir=" + git_dir, "branch", flag, branch],

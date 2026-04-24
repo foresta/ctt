@@ -29,8 +29,12 @@ pub(all) enum CommandResult {
   Select(
     items~ : Array[String],
     prompt~ : String,
-    accept_empty~ : Bool,
     on_select~ : async (String) -> CommandResult,
+  )
+  /// Present a menu of actions. Each option has a label and a callback.
+  Menu(
+    prompt~ : String,
+    options~ : Array[(String, async () -> CommandResult)],
   )
   /// Ask the user for free-text input.
   /// Pass the entered text to the continuation to get the next result.

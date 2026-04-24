@@ -1,4 +1,3 @@
 import {
-  "foresta/ctt/domain",
   "foresta/ctt/ports",
 }

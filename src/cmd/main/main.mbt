@@ -2,66 +2,19 @@
 /// Constructs all service implementations and returns them with the app config.
 fn resolve_dependencies(
   cfg : @commands.AppConfig
-) -> (@commands.Services, @commands.AppConfig) {
-  let fs = @services.new_filesystem()
+) -> (@commands.Services, @commands.AppConfig, @adapters.Console) {
+  let fs = @adapters.new_filesystem()
+  let console = @adapters.new_console()
   let svc = @commands.Services::{
-    selector: @services.new_selector(),
-    prompter: @services.new_prompter(),
-    repo_query: @services.new_repo_query(),
-    repo_mutator: @services.new_repo_mutator(),
-    pr: @services.new_pr_service(),
-    session: @services.new_session_manager(),
-    editor: @services.new_editor(),
+    selector: @adapters.new_selector(),
+    prompter: console,
+    vcs: @adapters.new_vcs(),
+    session: @adapters.new_session_manager(),
+    editor: @adapters.new_editor(),
     fs,
-    repo_finder: @services.new_repo_finder(),
-    tasks: @services.new_task_repository(fs, cfg.workspace_dir),
+    worktrees: @services.new_worktree_repository(fs, cfg.workspace_dir),
   }
-  (svc, cfg)
-}
-
-///|
-/// Interprets a CommandResult tree, performing actual I/O.
-/// Delegates output to the Renderer and interaction to ItemSelector/UserPrompter.
-async fn render(
-  result : @ports.CommandResult,
-  renderer : &@ports.Renderer,
-  selector : &@ports.ItemSelector,
-  prompter : &@ports.UserPrompter
-) -> Unit {
-  match result {
-    Lines(lines) => renderer.print_lines(lines)
-    Table(rows) => renderer.print_table(rows)
-    Empty => ()
-    Error(msg) => renderer.print_error(msg)
-    Sequence(results) =>
-      for result in results {
-        render(result, renderer, selector, prompter)
-      }
-    Then(first~, next~) => {
-      render(first, renderer, selector, prompter)
-      render(next(), renderer, selector, prompter)
-    }
-    Confirm(prompt~, on_yes~) => {
-      match prompter.confirm(prompt=prompt) {
-        Ok(true) => render(on_yes(), renderer, selector, prompter)
-        _ => renderer.print_cancelled()
-      }
-    }
-    Select(items~, prompt~, accept_empty~, on_select~) => {
-      match selector.select(items=items, prompt=prompt, accept_empty=accept_empty) {
-        Ok(Some(selected)) =>
-          render(on_select(selected), renderer, selector, prompter)
-        _ => renderer.print_cancelled()
-      }
-    }
-    Input(prompt~, on_input~) => {
-      match prompter.read_line(prompt=prompt) {
-        Ok(input) if input != "" =>
-          render(on_input(input), renderer, selector, prompter)
-        _ => renderer.print_cancelled()
-      }
-    }
-  }
+  (svc, cfg, console)
 }
 
 ///|
@@ -80,9 +33,8 @@ async fn main {
     workspace_dir: @config.workspace_dir(),
     config_dir: @config.config_dir(),
   }
-  let (svc, cfg) = resolve_dependencies(cfg)
+  let (svc, cfg, console) = resolve_dependencies(cfg)
   let command = @commands.dispatch(input, svc, cfg)
-  let renderer = @services.new_console_renderer()
   let result = command.run()
-  render(result, renderer, svc.selector, svc.prompter)
+  @interpreter.run(result, console, svc.selector, svc.prompter)
 }

@@ -8,5 +8,5 @@ pub(all) struct AppConfig {
 ///|
 /// Returns the worktree base directory derived from the workspace directory.
 pub fn worktree_dir(cfg : AppConfig) -> String {
-  @task.worktree_dir(cfg.workspace_dir)
+  @domain.worktree_dir(cfg.workspace_dir)
 }

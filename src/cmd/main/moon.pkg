@@ -1,8 +1,9 @@
 import {
+  "foresta/ctt/adapters",
   "foresta/ctt/cli",
   "foresta/ctt/commands",
   "foresta/ctt/config",
-  "foresta/ctt/ports",
+  "foresta/ctt/interpreter",
   "foresta/ctt/services",
   "moonbitlang/async",
   "moonbitlang/core/env",

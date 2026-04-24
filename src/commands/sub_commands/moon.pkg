@@ -1,5 +1,5 @@
 import {
-  "foresta/ctt/lib/glob",
+  "foresta/ctt/domain",
+  "foresta/ctt/lib/path" @path,
   "foresta/ctt/ports",
-  "foresta/ctt/task",
 }
