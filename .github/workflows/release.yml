@@ -30,8 +30,8 @@ jobs:
           curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
           echo "$HOME/.moon/bin" >> $GITHUB_PATH
 
-      - name: Install dependencies
-        run: cd src && moon install
+      - name: Update dependencies
+        run: cd src && moon update
 
       - name: Generate version
         run: CTT_VERSION="${GITHUB_REF_NAME#v}" bash scripts/gen-version.sh
