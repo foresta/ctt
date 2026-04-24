@@ -6,7 +6,7 @@
     "moonbitlang/async": "0.16.8"
   },
   "readme": "README.mbt.md",
-  "repository": "",
+  "repository": "https://github.com/foresta/ctt",
   "license": "Apache-2.0",
   "keywords": [],
   "description": "",
