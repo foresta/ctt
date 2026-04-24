@@ -27,4 +27,10 @@ uninstall:
 clean:
 	cd $(SRC_DIR) && moon clean
 
-.PHONY: build run install uninstall clean
+check-version:
+	@bash scripts/check-version.sh
+
+release:
+	@bash scripts/release.sh $(VERSION)
+
+.PHONY: build run install uninstall clean check-version release

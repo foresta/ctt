@@ -1,0 +1,126 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: macos-14
+            arch: arm64
+            target: darwin-arm64
+          - os: macos-13
+            arch: x64
+            target: darwin-x64
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install MoonBit
+        run: |
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
+          echo "$HOME/.moon/bin" >> $GITHUB_PATH
+
+      - name: Install dependencies
+        run: cd src && moon install
+
+      - name: Build
+        run: cd src && moon build --target native --release
+
+      - name: Package
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          ARCHIVE="ctt-${GITHUB_REF_NAME}-${{ matrix.target }}.tar.gz"
+          cp src/_build/native/release/build/cmd/main/main.exe ctt
+          tar czf "$ARCHIVE" ctt .worktree-link-ignore LICENSE README.md
+          sha256sum "$ARCHIVE" > "${ARCHIVE}.sha256"
+          echo "ARCHIVE=$ARCHIVE" >> $GITHUB_ENV
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ctt-${{ matrix.target }}
+          path: |
+            ${{ env.ARCHIVE }}
+            ${{ env.ARCHIVE }}.sha256
+
+  release:
+    name: Create release
+    needs: build
+    runs-on: ubuntu-latest
+    outputs:
+      arm64_sha: ${{ steps.sha.outputs.arm64 }}
+      x64_sha: ${{ steps.sha.outputs.x64 }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+
+      - name: Extract SHAs
+        id: sha
+        run: |
+          ARM64_SHA=$(cat ctt-${GITHUB_REF_NAME}-darwin-arm64.tar.gz.sha256 | awk '{print $1}')
+          X64_SHA=$(cat ctt-${GITHUB_REF_NAME}-darwin-x64.tar.gz.sha256 | awk '{print $1}')
+          echo "arm64=$ARM64_SHA" >> $GITHUB_OUTPUT
+          echo "x64=$X64_SHA" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            --generate-notes \
+            ctt-${GITHUB_REF_NAME}-darwin-arm64.tar.gz \
+            ctt-${GITHUB_REF_NAME}-darwin-arm64.tar.gz.sha256 \
+            ctt-${GITHUB_REF_NAME}-darwin-x64.tar.gz \
+            ctt-${GITHUB_REF_NAME}-darwin-x64.tar.gz.sha256
+
+  bump-tap:
+    name: Update Homebrew tap
+    needs: release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout homebrew-tap
+        uses: actions/checkout@v4
+        with:
+          repository: foresta/homebrew-tap
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          path: homebrew-tap
+
+      - name: Update Formula
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          ARM64_SHA="${{ needs.release.outputs.arm64_sha }}"
+          X64_SHA="${{ needs.release.outputs.x64_sha }}"
+          FORMULA="homebrew-tap/Formula/ctt.rb"
+
+          sed -i "s/version \"[^\"]*\"/version \"$VERSION\"/" "$FORMULA"
+          # arm64 URL and SHA (appears first in on_arm block)
+          sed -i "/on_arm/,/end/ s|url \"[^\"]*\"|url \"https://github.com/foresta/ctt/releases/download/${GITHUB_REF_NAME}/ctt-${GITHUB_REF_NAME}-darwin-arm64.tar.gz\"|" "$FORMULA"
+          sed -i "/on_arm/,/end/ s/sha256 \"[^\"]*\"/sha256 \"$ARM64_SHA\"/" "$FORMULA"
+          # x64 URL and SHA (appears in on_intel block)
+          sed -i "/on_intel/,/end/ s|url \"[^\"]*\"|url \"https://github.com/foresta/ctt/releases/download/${GITHUB_REF_NAME}/ctt-${GITHUB_REF_NAME}-darwin-x64.tar.gz\"|" "$FORMULA"
+          sed -i "/on_intel/,/end/ s/sha256 \"[^\"]*\"/sha256 \"$X64_SHA\"/" "$FORMULA"
+
+      - name: Commit and push
+        run: |
+          cd homebrew-tap
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/ctt.rb
+          git commit -m "ctt ${GITHUB_REF_NAME}"
+          git push

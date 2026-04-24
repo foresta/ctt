@@ -8,7 +8,6 @@ Written in [MoonBit](https://www.moonbitlang.com/) and compiled to a native bina
 
 ## Requirements
 
-- [MoonBit](https://www.moonbitlang.com/download/) (for building)
 - [fzf](https://github.com/junegunn/fzf)
 - git
 - [gh](https://cli.github.com/) (GitHub CLI)
@@ -16,6 +15,18 @@ Written in [MoonBit](https://www.moonbitlang.com/) and compiled to a native bina
 - Neovim + [claudecode.nvim](https://github.com/anthropics/claudecode.nvim)
 
 ## Installation
+
+### Homebrew (recommended)
+
+```bash
+brew install foresta/tap/ctt
+```
+
+This installs a pre-built native binary and seeds `~/.config/ctt/.worktree-link-ignore` on first install.
+
+### Build from source
+
+Requires [MoonBit](https://www.moonbitlang.com/download/).
 
 ```bash
 git clone https://github.com/foresta/ctt.git
@@ -39,6 +50,7 @@ ctt <command>
 - `ctt open` - Open an existing task in the editor
 - `ctt status` - Show task status (use `--all` for all tasks)
 - `ctt done` - Complete a task and remove its worktree
+- `ctt version` (or `ctt --version`) - Print version
 
 ## Configuration
 
