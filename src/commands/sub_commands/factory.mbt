@@ -6,53 +6,51 @@ pub fn new_help() -> &@ports.Runnable {
 
 ///|
 /// Create an LsCommand as a Runnable.
-pub fn new_ls(tasks : &@task.TaskRepository) -> &@ports.Runnable {
-  LsCommand::{ tasks, }
+pub fn new_ls(worktrees : &@ports.WorktreeRepository) -> &@ports.Runnable {
+  LsCommand::{ worktrees, }
 }
 
 ///|
 /// Create an OpenCommand as a Runnable.
 pub fn new_open(
   editor : &@ports.EditorLauncher,
-  tasks : &@task.TaskRepository
+  worktrees : &@ports.WorktreeRepository
 ) -> &@ports.Runnable {
-  OpenCommand::{ editor, tasks }
+  OpenCommand::{ editor, worktrees }
 }
 
 ///|
 /// Create a StatusCommand as a Runnable.
 pub fn new_status(
-  repo : &@ports.RepositoryQuery,
-  tasks : &@task.TaskRepository,
+  vcs : &@ports.VCS,
+  worktrees : &@ports.WorktreeRepository,
   params : Array[String]
 ) -> &@ports.Runnable {
-  StatusCommand::{ repo, tasks, params }
+  StatusCommand::{ vcs, worktrees, params }
 }
 
 ///|
 /// Create a DoneCommand as a Runnable.
 pub fn new_done(
-  repo_query : &@ports.RepositoryQuery,
-  repo_mutator : &@ports.RepositoryMutator,
+  vcs : &@ports.VCS,
   session : &@ports.SessionManager,
-  tasks : &@task.TaskRepository
+  worktrees : &@ports.WorktreeRepository
 ) -> &@ports.Runnable {
-  DoneCommand::{ repo_query, repo_mutator, session, tasks }
+  DoneCommand::{ vcs, session, worktrees }
 }
 
 ///|
 /// Create a NewCommand as a Runnable.
 pub fn new_new(
-  repo_query : &@ports.RepositoryQuery,
-  repo_mutator : &@ports.RepositoryMutator,
+  discovery : @domain.DiscoveryService,
+  worktree : @domain.WorktreeService,
+  vcs : &@ports.VCS,
   editor : &@ports.EditorLauncher,
   fs : &@ports.FileSystem,
-  repo_finder : &@ports.RepositoryFinder,
-  workspace_dir : String,
-  config_dir : String
+  workspace_dir : String
 ) -> &@ports.Runnable {
   NewCommand::{
-    repo_query, repo_mutator, editor, fs, repo_finder,
-    workspace_dir, config_dir,
+    discovery, worktree, vcs, editor, fs,
+    workspace_dir,
   }
 }

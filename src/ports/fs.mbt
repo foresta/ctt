@@ -8,4 +8,5 @@ pub(open) trait FileSystem {
   create_dir(Self, path~ : String) -> Result[Unit, String]
   async create_symlink(Self, src~ : String, dst~ : String) -> Result[Unit, String]
   read_file_to_string(Self, path~ : String) -> Result[String, String]
+  async find_dirs(Self, path~ : String, name~ : String, max_depth~ : Int) -> Result[Array[String], String]
 }

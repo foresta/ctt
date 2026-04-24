@@ -49,10 +49,7 @@ pub fn GlobPattern::matches(self : GlobPattern, path : String) -> Bool {
       return true
     }
     // Try matching against just the basename (last component)
-    match path.rev_find("/") {
-      Some(idx) => glob_match(self.pattern, path[idx + 1:].to_string())
-      None => false // already tried full path above
-    }
+    glob_match(self.pattern, @path.basename(path))
   }
 }
 

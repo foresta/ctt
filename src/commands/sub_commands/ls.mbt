@@ -1,19 +1,19 @@
 ///|
-/// Lists all active task names.
+/// Lists all active worktree names.
 pub(all) struct LsCommand {
-  tasks : &@task.TaskRepository
+  worktrees : &@ports.WorktreeRepository
 }
 
 ///|
-/// Returns task names as Lines, or an Error if listing fails.
+/// Returns worktree names as Lines, or an Error if listing fails.
 impl @ports.Runnable for LsCommand with run(self) {
-  let tasks = match self.tasks.list() {
+  let worktrees = match self.worktrees.list() {
     Ok(t) => t
     Err(e) => return @ports.Error(e)
   }
-  if tasks.is_empty() {
-    @ports.Lines(["No active tasks."])
+  if worktrees.is_empty() {
+    @ports.Lines(["No active worktrees."])
   } else {
-    @ports.Lines(tasks.map(fn(t) { t.name }))
+    @ports.Lines(worktrees.map(fn(t) { t.name }))
   }
 }

@@ -1,0 +1,5 @@
+import {
+  "moonbitlang/async/process" @async_process,
+  "moonbitlang/async/io",
+  "moonbitlang/core/encoding/utf8",
+}

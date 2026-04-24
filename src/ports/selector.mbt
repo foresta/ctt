@@ -10,6 +10,6 @@ pub(all) struct SelectionResult {
 /// Port for interactive item selection from a list.
 /// Adapters provide fuzzy-finder or menu-based implementations.
 pub(open) trait ItemSelector {
-  async select(Self, items~ : Array[String], prompt~ : String, accept_empty~ : Bool) -> Result[String?, String]
+  async select(Self, items~ : Array[String], prompt~ : String) -> Result[String?, String]
   async select_with_query(Self, items~ : Array[String], prompt~ : String) -> Result[SelectionResult, String]
 }

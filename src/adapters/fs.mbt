@@ -47,7 +47,7 @@ impl @ports.FileSystem for OsFileSystem with create_dir(self, path~) {
 /// Create a symbolic link from src to dst.
 impl @ports.FileSystem for OsFileSystem with create_symlink(self, src~, dst~) {
   let _ = self
-  let (status, output) = exec_cmd("ln", ["-s", src, dst])
+  let (status, output) = @proc.exec_cmd("ln", ["-s", src, dst])
   if status != 0 {
     return Err("symlink failed: " + output.trim_end().to_string())
   }
@@ -63,4 +63,25 @@ impl @ports.FileSystem for OsFileSystem with read_file_to_string(self, path~) {
   } catch {
     err => Err(err.to_string())
   }
+}
+
+///|
+/// Find directories matching a name pattern up to max_depth.
+impl @ports.FileSystem for OsFileSystem with find_dirs(self, path~, name~, max_depth~) {
+  let _ = self
+  let (status, output) = @proc.exec_cmd(
+    "find",
+    [path, "-maxdepth", max_depth.to_string(), "-type", "d", "-name", name, "-prune"],
+  )
+  if status != 0 {
+    return Err("find failed")
+  }
+  let dirs : Array[String] = output
+    .trim_end()
+    .to_string()
+    .split("\n")
+    .filter(fn(s) { s.length() > 0 })
+    .map(fn(s) { s.to_string() })
+    .collect()
+  Ok(dirs)
 }

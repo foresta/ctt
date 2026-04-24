@@ -16,7 +16,7 @@ impl @ports.SessionManager for TmuxSession with is_active(self) {
 /// List all window names in the current tmux session.
 impl @ports.SessionManager for TmuxSession with list_windows(self) {
   let _ = self
-  let (status, output) = exec_cmd(
+  let (status, output) = @proc.exec_cmd(
     "tmux",
     ["list-windows", "-F", "#{window_name}"],
   )
