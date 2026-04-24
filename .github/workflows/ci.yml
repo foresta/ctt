@@ -34,10 +34,3 @@ jobs:
       - name: Test
         run: cd src && moon test --target native
 
-  version-consistency:
-    name: Version consistency
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Check version sync
-        run: bash scripts/check-version.sh

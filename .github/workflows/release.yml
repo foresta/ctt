@@ -33,6 +33,9 @@ jobs:
       - name: Install dependencies
         run: cd src && moon install
 
+      - name: Generate version
+        run: CTT_VERSION="${GITHUB_REF_NAME#v}" bash scripts/gen-version.sh
+
       - name: Build
         run: cd src && moon build --target native --release
 

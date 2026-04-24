@@ -17,16 +17,10 @@ TAG="v$VERSION"
 
 echo "Bumping to $VERSION ..."
 
-# Update moon.mod.json
+# Update moon.mod.json (keeps module metadata in sync with tag)
 sed -i '' "s/\"version\": \"[^\"]*\"/\"version\": \"$VERSION\"/" src/moon.mod.json
 
-# Update version.mbt
-sed -i '' "s/pub const VERSION : String = \"[^\"]*\"/pub const VERSION : String = \"$VERSION\"/" src/version/version.mbt
-
-# Verify consistency
-./scripts/check-version.sh
-
-git add src/moon.mod.json src/version/version.mbt
+git add src/moon.mod.json
 git commit -m "chore: release $TAG"
 git tag "$TAG"
 

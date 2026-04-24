@@ -1,2 +1,2 @@
 ///|
-pub const VERSION : String = "0.1.0"
+pub const VERSION : String = "dev"
