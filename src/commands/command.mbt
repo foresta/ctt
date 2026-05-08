@@ -7,6 +7,7 @@ pub(all) enum Command {
   Done
   New
   Help
+  Version
 }
 
 ///|

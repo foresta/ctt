@@ -7,6 +7,7 @@ pub fn dispatch(
 ) -> &@ports.Runnable {
   match input.command {
     Help => @sub_commands.new_help()
+    Version => @sub_commands.new_version()
     Ls => @sub_commands.new_ls(svc.worktrees)
     Open => @sub_commands.new_open(svc.editor, svc.worktrees)
     Status =>

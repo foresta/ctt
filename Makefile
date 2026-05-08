@@ -9,6 +9,7 @@ ifeq (run,$(firstword $(MAKECMDGOALS)))
 endif
 
 build:
+	bash scripts/gen-version.sh
 	cd $(SRC_DIR) && moon build --target native --release
 
 run: build
@@ -27,4 +28,7 @@ uninstall:
 clean:
 	cd $(SRC_DIR) && moon clean
 
-.PHONY: build run install uninstall clean
+release:
+	@bash scripts/release.sh $(VERSION)
+
+.PHONY: build run install uninstall clean release

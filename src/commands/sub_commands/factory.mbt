@@ -5,6 +5,12 @@ pub fn new_help() -> &@ports.Runnable {
 }
 
 ///|
+/// Create a VersionCommand as a Runnable.
+pub fn new_version() -> &@ports.Runnable {
+  VersionCommand::{}
+}
+
+///|
 /// Create an LsCommand as a Runnable.
 pub fn new_ls(worktrees : &@ports.WorktreeRepository) -> &@ports.Runnable {
   LsCommand::{ worktrees, }
