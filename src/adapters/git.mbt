@@ -6,7 +6,7 @@ pub(all) struct GitCli {}
 /// Run a git command and return (exit_status, trimmed_output).
 async fn git_run(args : Array[String], cwd~ : String = "") -> (Int, String) {
   let (status, output) = @proc.exec_cmd("git", args, cwd=cwd)
-  (status, output.trim_end().to_string())
+  (status, output.trim_end().to_owned())
 }
 
 ///|
@@ -27,16 +27,16 @@ async fn resolve_git_dir(workdir : String) -> Result[String, String] {
 fn extract_repo_slug_impl(remote_url : String) -> String {
   let mut url = remote_url
   if url.has_suffix(".git") {
-    url = url[:url.length() - 4].to_string()
+    url = url[:url.length() - 4].to_owned()
   }
   if url.has_prefix("git@") {
     match url.find(":") {
-      Some(idx) => return url[idx + 1:].to_string()
+      Some(idx) => return url[idx + 1:].to_owned()
       None => ()
     }
   }
   match url.find("github.com/") {
-    Some(idx) => url[idx + 11:].to_string()
+    Some(idx) => url[idx + 11:].to_owned()
     None => ""
   }
 }
@@ -110,23 +110,23 @@ impl @ports.VCS for GitCli with list_branches(self, repo_dir~) {
   )
   let local_branches : Array[String] = local_output
     .split("\n")
-    .map(fn(s) { s.to_string() })
+    .map(fn(s) { s.to_owned() })
     .filter(fn(s) { s != "" && s != "HEAD" })
     .collect()
-  let seen : Map[String, Bool] = {}
+  let seen : Map[String, Bool] = Map([])
   for b in local_branches {
     seen[b] = true
   }
   let remote_branches : Array[String] = remote_output
     .split("\n")
     .map(fn(s) {
-      let raw = s.to_string()
+      let raw = s.to_owned()
       match raw.find("/") {
-        Some(idx) => raw[idx + 1:].to_string()
+        Some(idx) => raw[idx + 1:].to_owned()
         None => raw
       }
     })
-    .filter(fn(s) { s != "" && s != "HEAD" && not(seen.contains(s)) })
+    .filter(fn(s) { s != "" && s != "HEAD" && !seen.contains(s) })
     .collect()
   Ok(@ports.BranchList::{ local_branches, remote_branches })
 }
@@ -142,7 +142,7 @@ impl @ports.VCS for GitCli with branch_exists(self, workdir~, branch~) {
   let (status, output) = git_run(
     ["--git-dir=" + git_dir, "branch", "--list", branch],
   )
-  Ok(status == 0 && output.trim_end().to_string() != "")
+  Ok(status == 0 && output.trim_end().to_owned() != "")
 }
 
 ///|
@@ -159,9 +159,9 @@ impl @ports.VCS for GitCli with list_ignored_files(self, repo_dir~) {
   let files : Array[String] = output
     .split("\n")
     .map(fn(s) {
-      let path = s.to_string()
+      let path = s.to_owned()
       if path.has_suffix("/") {
-        path[:path.length() - 1].to_string()
+        path[:path.length() - 1].to_owned()
       } else {
         path
       }

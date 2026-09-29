@@ -38,7 +38,7 @@ impl @ports.WorktreeRepository for OsWorktreeRepository with list(self) {
 ///|
 /// Find a worktree by its exact name.
 impl @ports.WorktreeRepository for OsWorktreeRepository with find(self, name~) {
-  let worktrees = match self.list() {
+  let worktrees = match @ports.WorktreeRepository::list(self) {
     Ok(t) => t
     Err(e) => return Err(e)
   }

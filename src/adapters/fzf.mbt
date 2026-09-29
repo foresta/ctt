@@ -7,7 +7,7 @@ pub(all) struct FzfSelector {}
 impl @ports.ItemSelector for FzfSelector with select(self, items~, prompt~) {
   let _ = self
   let input = items.join("\n")
-  let (read_end, write_end) = @pipe.pipe()
+  let (read_end, write_end) = @process.write_to_process()
   write_end.write(input)
   write_end.close()
   let args : Array[String] = ["--prompt=\{prompt}", "--bind=enter:accept-non-empty"]
@@ -16,11 +16,10 @@ impl @ports.ItemSelector for FzfSelector with select(self, items~, prompt~) {
     args,
     stdin=read_end,
   )
-  read_end.close()
   if status != 0 {
     return Ok(None)
   }
-  let result = output.trim_end().to_string()
+  let result = output.trim_end().to_owned()
   Ok(if result == "" { None } else { Some(result) })
 }
 
@@ -29,7 +28,7 @@ impl @ports.ItemSelector for FzfSelector with select(self, items~, prompt~) {
 impl @ports.ItemSelector for FzfSelector with select_with_query(self, items~, prompt~) {
   let _ = self
   let input = items.join("\n")
-  let (read_end, write_end) = @pipe.pipe()
+  let (read_end, write_end) = @process.write_to_process()
   write_end.write(input)
   write_end.close()
   let (_, output) = @proc.exec_cmd_stdout(
@@ -37,11 +36,10 @@ impl @ports.ItemSelector for FzfSelector with select_with_query(self, items~, pr
     ["--print-query", "--prompt=\{prompt}"],
     stdin=read_end,
   )
-  read_end.close()
-  let text = output.trim_end().to_string()
+  let text = output.trim_end().to_owned()
   let lines : Array[String] = text
     .split("\n")
-    .map(fn(s) { s.to_string() })
+    .map(fn(s) { s.to_owned() })
     .collect()
   let result = if lines.length() >= 2 && lines[1] != "" {
     @ports.SelectionResult::{ query: lines[0], selected: Some(lines[1]) }

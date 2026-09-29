@@ -4,26 +4,32 @@ pub(all) struct GlobPattern {
   pattern : String
   negated : Bool
   anchored : Bool
-} derive(Show, Eq)
+} derive(Eq, Debug)
+
+///|
+pub extend GlobPattern with Eq::{ equal, not_equal }
+
+///|
+pub extend GlobPattern with @debug.Debug::{ to_repr }
 
 ///|
 /// Parse a gitignore-style pattern line. Returns None for empty lines and comments.
 pub fn parse(line : String) -> GlobPattern? {
-  let trimmed = line.trim_end().to_string()
+  let trimmed = line.trim_end().to_owned()
   if trimmed == "" || trimmed.has_prefix("#") {
     return None
   }
   let mut s = trimmed
   let negated = s.has_prefix("!")
   if negated {
-    s = s[1:].to_string()
+    s = s[1:].to_owned()
   }
   if s.has_suffix("/") {
-    s = s[:s.length() - 1].to_string()
+    s = s[:s.length() - 1].to_owned()
   }
   let anchored = s.has_prefix("/") || contains_slash(s)
   if s.has_prefix("/") {
-    s = s[1:].to_string()
+    s = s[1:].to_owned()
   }
   Some(GlobPattern::{ pattern: s, negated, anchored })
 }

@@ -2,7 +2,6 @@ import {
   "foresta/ctt/ports",
   "foresta/ctt/lib/process" @proc,
   "moonbitlang/async/process",
-  "moonbitlang/async/pipe",
-  "moonbitlang/x/sys",
+  "moonbitlang/core/env",
   "moonbitlang/x/fs" @xfs,
 }

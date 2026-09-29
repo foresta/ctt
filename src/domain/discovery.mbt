@@ -23,7 +23,7 @@ pub async fn DiscoveryService::find_repos(
     .filter(fn(s) { s.length() > marker_len })
     .map(fn(s) {
       // Remove /marker suffix
-      s[:s.length() - marker_len].to_string()
+      s[:s.length() - marker_len].to_owned()
     })
     .collect()
   Ok(repos)

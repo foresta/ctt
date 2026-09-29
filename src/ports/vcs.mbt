@@ -5,7 +5,13 @@ pub(all) enum WorktreeStatus {
   PrOpen
   Merged
   NoChanges
-} derive(Show, Eq)
+} derive(Eq, Debug)
+
+///|
+pub extend WorktreeStatus with Eq::{ equal, not_equal }
+
+///|
+pub extend WorktreeStatus with @debug.Debug::{ to_repr }
 
 ///|
 /// Aggregated information about a worktree including its git and PR state.
@@ -16,7 +22,10 @@ pub(all) struct WorktreeInfo {
   uncommitted : Int
   commits_ahead : Int
   pr_url : String
-} derive(Show)
+} derive(Debug)
+
+///|
+pub extend WorktreeInfo with @debug.Debug::{ to_repr }
 
 ///|
 /// Returns the display string for this status.

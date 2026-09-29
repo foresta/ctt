@@ -10,13 +10,24 @@ fn pad_right(s : String, width : Int) -> String {
   if len >= width {
     return s
   }
-  let buf = StringBuilder::new()
+  let buf = StringBuilder()
   buf.write_string(s)
   for i = len; i < width; i = i + 1 {
     buf.write_char(' ')
   }
   buf.to_string()
 }
+
+///|
+pub extend Console with @ports.Renderer::{
+  print_lines,
+  print_table,
+  print_error,
+  print_cancelled,
+}
+
+///|
+pub extend Console with @ports.UserPrompter::{ confirm, read_line }
 
 ///|
 pub impl @ports.Renderer for Console with print_lines(self, lines) {
@@ -37,7 +48,7 @@ pub impl @ports.Renderer for Console with print_table(self, rows) {
     }
   }
   for row in rows {
-    let buf = StringBuilder::new()
+    let buf = StringBuilder()
     for i, cell in row {
       if i > 0 {
         buf.write_string("  ")
@@ -73,7 +84,7 @@ pub impl @ports.UserPrompter for Console with confirm(self, prompt~) {
     "sh",
     ["-c", "read line && echo \"$line\""],
   )
-  let answer = output.trim_end().to_string()
+  let answer = output.trim_end().to_owned()
   Ok(answer == "y" || answer == "Y")
 }
 
@@ -86,5 +97,5 @@ pub impl @ports.UserPrompter for Console with read_line(self, prompt~) {
     "sh",
     ["-c", "read line && echo \"$line\""],
   )
-  Ok(output.trim_end().to_string())
+  Ok(output.trim_end().to_owned())
 }

@@ -1,7 +1,7 @@
 ///|
 /// Return the user's home directory from the HOME environment variable.
 pub fn home_dir() -> String {
-  match @sys.get_env_var("HOME") {
+  match @env.get_env_var("HOME") {
     Some(home) => home
     None => panic() // HOME must be set
   }
@@ -29,7 +29,7 @@ pub fn config_dir() -> String {
 /// Validate that the worktree directory exists. Raises on failure.
 pub fn validate() -> Unit raise {
   let dir = worktree_dir()
-  if not(@fs.path_exists(dir)) {
+  if !@fs.path_exists(dir) {
     raise @builtin.Failure("Worktree directory not found: \{dir}")
   }
 }

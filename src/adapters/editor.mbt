@@ -13,7 +13,7 @@ impl @ports.EditorLauncher for NvimEditor with open(self, repo_name~, workdir~, 
   } else {
     "ClaudeCode"
   }
-  let in_tmux = match @sys.get_env_var("TMUX") {
+  let in_tmux = match @env.get_env_var("TMUX") {
     Some(v) => v != ""
     None => false
   }

@@ -2,7 +2,7 @@
 /// Parse a worktree name into a repo name and branch name, split by "__".
 pub fn parse_worktree_name(name : String) -> (String, String) {
   match name.find("__") {
-    Some(idx) => (name[:idx].to_string(), name[idx + 2:].to_string())
+    Some(idx) => (name[:idx].to_owned(), name[idx + 2:].to_owned())
     None => (name, "")
   }
 }
@@ -43,7 +43,7 @@ pub async fn WorktreeService::link_ignored_files(
     match self.fs.read_file_to_string(path=ignore_file) {
       Ok(content) =>
         for part in content.split("\n") {
-          match @glob.parse(part.to_string()) {
+          match @glob.parse(part.to_owned()) {
             Some(pat) => skip_patterns.push(pat)
             None => ()
           }
@@ -59,17 +59,17 @@ pub async fn WorktreeService::link_ignored_files(
   for path in ignored {
     let src = repo_dir + "/" + path
     let dst = workdir + "/" + path
-    if not(self.fs.path_exists(path=src)) {
+    if !self.fs.path_exists(path=src) {
       continue
     }
     let skip = skip_patterns.fold(init=false, fn(acc, pattern) {
-      if pattern.matches(path) { not(pattern.negated) } else { acc }
+      if pattern.matches(path) { !pattern.negated } else { acc }
     })
     if skip || self.fs.path_exists(path=dst) {
       continue
     }
     let dst_dir = @path.dirname(dst)
-    if not(self.fs.path_exists(path=dst_dir)) {
+    if !self.fs.path_exists(path=dst_dir) {
       let _ = self.fs.create_dir(path=dst_dir)
     }
     let is_dir = match self.fs.is_dir(path=src) {
@@ -82,7 +82,7 @@ pub async fn WorktreeService::link_ignored_files(
         Ok(children) =>
           for child in children {
             let child_dst = dst + "/" + child
-            if not(self.fs.path_exists(path=child_dst)) {
+            if !self.fs.path_exists(path=child_dst) {
               let child_src = src + "/" + child
               let _ = self.fs.create_symlink(src=child_src, dst=child_dst)
             }
