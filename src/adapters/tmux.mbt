@@ -6,7 +6,7 @@ pub(all) struct TmuxSession {}
 /// Return true if running inside a tmux session.
 impl @ports.SessionManager for TmuxSession with is_active(self) {
   let _ = self
-  match @sys.get_env_var("TMUX") {
+  match @env.get_env_var("TMUX") {
     Some(v) => v != ""
     None => false
   }
@@ -23,11 +23,11 @@ impl @ports.SessionManager for TmuxSession with list_windows(self) {
   if status != 0 {
     return Ok([])
   }
-  let text = output.trim_end().to_string()
+  let text = output.trim_end().to_owned()
   if text == "" {
     return Ok([])
   }
-  Ok(text.split("\n").map(fn(s) { s.to_string() }).collect())
+  Ok(text.split("\n").map(fn(s) { s.to_owned() }).collect())
 }
 
 ///|

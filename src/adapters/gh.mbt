@@ -27,7 +27,7 @@ async fn GhCli::get_status(
   if status != 0 {
     return Ok(PrStatus::{ state: "", url: "" })
   }
-  let text = output.trim_end().to_string()
+  let text = output.trim_end().to_owned()
   if text == "" || text == "[]" {
     return Ok(PrStatus::{ state: "", url: "" })
   }
@@ -44,10 +44,10 @@ fn extract_json_string(json : String, key : String) -> String {
     None => ""
     Some(start) => {
       let value_start = start + pattern.length()
-      let rest = json.to_string()[value_start:].to_string()
+      let rest = json[value_start:].to_owned()
       match rest.find("\"") {
         None => ""
-        Some(end) => rest.to_string()[:end].to_string()
+        Some(end) => rest[:end].to_owned()
       }
     }
   }

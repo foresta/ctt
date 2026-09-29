@@ -7,9 +7,9 @@ pub(all) struct OsFileSystem {}
 impl @ports.FileSystem for OsFileSystem with read_dir(self, path~) {
   let _ = self
   try {
-    Ok(@xfs.read_dir(path))
+    Ok(@xfs.read_dir(path).to_owned())
   } catch {
-    err => Err(err.to_string())
+    IOError(msg) => Err(msg)
   }
 }
 
@@ -27,7 +27,7 @@ impl @ports.FileSystem for OsFileSystem with is_dir(self, path~) {
   try {
     Ok(@xfs.is_dir(path))
   } catch {
-    err => Err(err.to_string())
+    IOError(msg) => Err(msg)
   }
 }
 
@@ -39,7 +39,7 @@ impl @ports.FileSystem for OsFileSystem with create_dir(self, path~) {
     @xfs.create_dir(path)
     Ok(())
   } catch {
-    err => Err(err.to_string())
+    IOError(msg) => Err(msg)
   }
 }
 
@@ -49,7 +49,7 @@ impl @ports.FileSystem for OsFileSystem with create_symlink(self, src~, dst~) {
   let _ = self
   let (status, output) = @proc.exec_cmd("ln", ["-s", src, dst])
   if status != 0 {
-    return Err("symlink failed: " + output.trim_end().to_string())
+    return Err("symlink failed: " + output.trim_end().to_owned())
   }
   Ok(())
 }
@@ -61,7 +61,7 @@ impl @ports.FileSystem for OsFileSystem with read_file_to_string(self, path~) {
   try {
     Ok(@xfs.read_file_to_string(path))
   } catch {
-    err => Err(err.to_string())
+    IOError(msg) => Err(msg)
   }
 }
 
@@ -78,10 +78,9 @@ impl @ports.FileSystem for OsFileSystem with find_dirs(self, path~, name~, max_d
   }
   let dirs : Array[String] = output
     .trim_end()
-    .to_string()
     .split("\n")
     .filter(fn(s) { s.length() > 0 })
-    .map(fn(s) { s.to_string() })
+    .map(fn(s) { s.to_owned() })
     .collect()
   Ok(dirs)
 }

@@ -1,3 +1,4 @@
 import {
   "foresta/ctt/lib/path",
+  "moonbitlang/core/debug" @debug,
 }

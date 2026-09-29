@@ -3,7 +3,7 @@
 /// e.g. "/home/user/project" -> "project"
 pub fn basename(path : String) -> String {
   match path.rev_find("/") {
-    Some(idx) => path[idx + 1:].to_string()
+    Some(idx) => path[idx + 1:].to_owned()
     None => path
   }
 }
@@ -13,7 +13,7 @@ pub fn basename(path : String) -> String {
 /// e.g. "/home/user/project" -> "/home/user"
 pub fn dirname(path : String) -> String {
   match path.rev_find("/") {
-    Some(idx) => path[:idx].to_string()
+    Some(idx) => path[:idx].to_owned()
     None => path
   }
 }
