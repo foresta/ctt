@@ -7,9 +7,9 @@ pub(all) struct OsFileSystem {}
 impl @ports.FileSystem for OsFileSystem with read_dir(self, path~) {
   let _ = self
   try {
-    Ok(@xfs.read_dir(path))
+    Ok(@xfs.read_dir(path).to_array())
   } catch {
-    err => Err(err.to_string())
+    IOError(msg) => Err(msg)
   }
 }
 
@@ -27,7 +27,7 @@ impl @ports.FileSystem for OsFileSystem with is_dir(self, path~) {
   try {
     Ok(@xfs.is_dir(path))
   } catch {
-    err => Err(err.to_string())
+    IOError(msg) => Err(msg)
   }
 }
 
@@ -39,7 +39,7 @@ impl @ports.FileSystem for OsFileSystem with create_dir(self, path~) {
     @xfs.create_dir(path)
     Ok(())
   } catch {
-    err => Err(err.to_string())
+    IOError(msg) => Err(msg)
   }
 }
 
@@ -61,7 +61,7 @@ impl @ports.FileSystem for OsFileSystem with read_file_to_string(self, path~) {
   try {
     Ok(@xfs.read_file_to_string(path))
   } catch {
-    err => Err(err.to_string())
+    IOError(msg) => Err(msg)
   }
 }
 
