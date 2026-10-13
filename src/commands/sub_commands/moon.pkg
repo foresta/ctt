@@ -1,6 +1,7 @@
 import {
   "foresta/ctt/domain",
   "foresta/ctt/lib/path" @path,
+  "foresta/ctt/lib/prompt" @prompt,
   "foresta/ctt/ports",
   "foresta/ctt/version",
 }

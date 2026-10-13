@@ -27,9 +27,24 @@ pub extend HerdrConfig with Eq::{equal, not_equal}
 pub extend HerdrConfig with @debug.Debug::{to_repr}
 
 ///|
+/// Settings shared by every backend's agent.
+pub(all) struct AgentConfig {
+  /// Prompt given to the agent when a task starts with context. `{context}` is
+  /// replaced with what was passed on the command line.
+  prompt_template : String
+} derive(Eq, Debug)
+
+///|
+pub extend AgentConfig with Eq::{equal, not_equal}
+
+///|
+pub extend AgentConfig with @debug.Debug::{to_repr}
+
+///|
 /// User configuration loaded from `~/.config/ctt/config.toml`.
 pub(all) struct CttConfig {
   multiplexer : Multiplexer
+  agent : AgentConfig
   herdr : HerdrConfig
 } derive(Eq, Debug)
 
@@ -40,14 +55,20 @@ pub extend CttConfig with Eq::{equal, not_equal}
 pub extend CttConfig with @debug.Debug::{to_repr}
 
 ///|
-pub const DEFAULT_AGENT_COMMAND : String = "claude"
+/// `{prompt}` expands to the saved task prompt, or to nothing when there is none.
+pub const DEFAULT_AGENT_COMMAND : String = "claude {prompt}"
+
+///|
+pub const DEFAULT_PROMPT_TEMPLATE : String = "Start working on this task. Read the context first, then plan before editing.\n\n{context}"
 
 ///|
 /// Resume command derived from the agent command: resume the previous session,
 /// or start a fresh one when the resume fails because there is nothing to
 /// resume (`claude --continue` exits non-zero in a directory without a session).
+/// The prompt placeholder is kept only on the fresh-session side.
 pub fn default_resume_command(agent_command : String) -> String {
-  "\{agent_command} --continue || \{agent_command}"
+  let without_prompt = @prompt.expand_prompt(agent_command, None)
+  "\{without_prompt} --continue || \{agent_command}"
 }
 
 ///|
@@ -55,6 +76,7 @@ pub fn default_resume_command(agent_command : String) -> String {
 pub fn CttConfig::default() -> CttConfig {
   {
     multiplexer: Herdr,
+    agent: { prompt_template: DEFAULT_PROMPT_TEMPLATE },
     herdr: {
       agent_command: DEFAULT_AGENT_COMMAND,
       agent_resume_command: default_resume_command(DEFAULT_AGENT_COMMAND),
@@ -67,6 +89,7 @@ pub fn CttConfig::default() -> CttConfig {
 /// Keeping this independent of the TOML library lets validation be tested without parsing.
 pub(all) struct RawConfig {
   multiplexer : String?
+  agent_prompt_template : String?
   herdr_agent_command : String?
   herdr_agent_resume_command : String?
 }
@@ -92,6 +115,19 @@ pub fn RawConfig::to_config(self : RawConfig) -> Result[CttConfig, String] {
         Err(e) => return Err(e)
       }
   }
+  let prompt_template = match
+    string_or_default(
+      self.agent_prompt_template, "agent.prompt_template",
+      DEFAULT_PROMPT_TEMPLATE,
+    ) {
+    Ok(s) =>
+      if s.contains(@prompt.CONTEXT_PLACEHOLDER) {
+        s
+      } else {
+        return Err("agent.prompt_template must contain {context}")
+      }
+    Err(e) => return Err(e)
+  }
   let agent_command = match
     string_or_default(
       self.herdr_agent_command, "herdr.agent_command", DEFAULT_AGENT_COMMAND,
@@ -107,7 +143,11 @@ pub fn RawConfig::to_config(self : RawConfig) -> Result[CttConfig, String] {
     Ok(s) => s
     Err(e) => return Err(e)
   }
-  Ok({ multiplexer, herdr: { agent_command, agent_resume_command } })
+  Ok({
+    multiplexer,
+    agent: { prompt_template, },
+    herdr: { agent_command, agent_resume_command },
+  })
 }
 
 ///|

@@ -4,6 +4,7 @@ pub(all) struct DoneCommand {
   vcs : &@ports.VCS
   workspace : &@ports.WorkspaceManager
   worktrees : &@ports.WorktreeRepository
+  worktree : @domain.WorktreeService
   opts : DoneOptions
 }
 
@@ -79,6 +80,11 @@ async fn DoneCommand::remove(
   match self.vcs.remove_worktree(workdir=wt.workdir) {
     Ok(_) => ()
     Err(e) => return @ports.Error("failed to remove worktree: " + e)
+  }
+  match self.worktree.remove_prompt(name) {
+    Ok(true) => output.push("Removed task prompt")
+    Ok(false) => ()
+    Err(e) => output.push("Warning: " + e)
   }
   match self.branch_cleanup(git_dir, wt, output) {
     Some(interactive) => interactive

@@ -3,6 +3,7 @@
 pub(all) struct OpenCommand {
   workspace : &@ports.WorkspaceManager
   worktrees : &@ports.WorktreeRepository
+  worktree : @domain.WorktreeService
   opts : OpenOptions
 }
 
@@ -24,6 +25,7 @@ async fn OpenCommand::open_worktree(
     workdir=wt.workdir,
     continue_session=true,
     focus=self.opts.focus,
+    prompt_file=self.worktree.existing_prompt(wt.name),
   ) {
     Ok(_) => @ports.Lines(["Opened: " + wt.name, "Worktree: " + wt.workdir])
     Err(e) => @ports.Error(e)

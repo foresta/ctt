@@ -99,3 +99,20 @@ pub impl @ports.UserPrompter for Console with read_line(self, prompt~) {
   )
   Ok(output.trim_end().to_owned())
 }
+
+///|
+/// Read a whole text source: a file path, or stdin when `path` is `-`.
+pub async fn read_text_source(path : String) -> Result[String, String] {
+  if path == "-" {
+    let (status, output) = @proc.exec_cmd_stdout("sh", ["-c", "cat"])
+    if status != 0 {
+      return Err("failed to read stdin")
+    }
+    return Ok(output)
+  }
+  try {
+    Ok(@xfs.read_file_to_string(path))
+  } catch {
+    IOError(msg) => Err("failed to read " + path + ": " + msg)
+  }
+}

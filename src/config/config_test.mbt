@@ -4,9 +4,40 @@
 test "empty file yields defaults" {
   assert_eq(@config.parse_config_toml(""), Ok(@config.CttConfig::default()))
   assert_eq(@config.CttConfig::default().multiplexer, @config.Herdr)
-  assert_eq(@config.CttConfig::default().herdr.agent_command, "claude")
+  assert_eq(@config.CttConfig::default().herdr.agent_command, "claude {prompt}")
   assert_eq(
     @config.CttConfig::default().herdr.agent_resume_command,
+    "claude --continue || claude {prompt}",
+  )
+  assert_true(
+    @config.CttConfig::default().agent.prompt_template.contains("{context}"),
+  )
+}
+
+///|
+test "agent.prompt_template" {
+  let cfg = @config.parse_config_toml(
+    "[agent]\nprompt_template = \"/start {context}\"\n",
+  ).unwrap()
+  assert_eq(cfg.agent.prompt_template, "/start {context}")
+  match @config.parse_config_toml("[agent]\nprompt_template = \"no placeholder\"\n") {
+    Err(e) => assert_true(e.contains("must contain {context}"))
+    Ok(_) => fail("expected Err")
+  }
+  match @config.parse_config_toml("agent = 1\n") {
+    Err(e) => assert_true(e.contains("agent must be a table"))
+    Ok(_) => fail("expected Err")
+  }
+}
+
+///|
+test "default_resume_command keeps {prompt} only on the fresh side" {
+  assert_eq(
+    @config.default_resume_command("claude --model opus {prompt}"),
+    "claude --model opus --continue || claude --model opus {prompt}",
+  )
+  assert_eq(
+    @config.default_resume_command("claude"),
     "claude --continue || claude",
   )
 }
@@ -15,7 +46,7 @@ test "empty file yields defaults" {
 test "multiplexer = tmux" {
   let cfg = @config.parse_config_toml("multiplexer = \"tmux\"\n").unwrap()
   assert_eq(cfg.multiplexer, @config.Tmux)
-  assert_eq(cfg.herdr.agent_command, "claude")
+  assert_eq(cfg.herdr.agent_command, "claude {prompt}")
 }
 
 ///|
@@ -43,7 +74,7 @@ test "herdr with custom agent_resume_command" {
     #|agent_resume_command = "claude --resume"
     #|
   let cfg = @config.parse_config_toml(text).unwrap()
-  assert_eq(cfg.herdr.agent_command, "claude")
+  assert_eq(cfg.herdr.agent_command, "claude {prompt}")
   assert_eq(cfg.herdr.agent_resume_command, "claude --resume")
   match @config.parse_config_toml("[herdr]\nagent_resume_command = 1\n") {
     Err(e) => assert_true(e.contains("herdr.agent_resume_command"))
@@ -144,6 +175,7 @@ test "multiplexer_from_string" {
 test "RawConfig::to_config fills defaults" {
   let raw = @config.RawConfig::{
     multiplexer: None,
+    agent_prompt_template: None,
     herdr_agent_command: None,
     herdr_agent_resume_command: None,
   }
@@ -154,6 +186,7 @@ test "RawConfig::to_config fills defaults" {
 test "RawConfig::to_config keeps explicit values" {
   let raw = @config.RawConfig::{
     multiplexer: Some("tmux"),
+    agent_prompt_template: Some("Task: {context}"),
     herdr_agent_command: Some("claude --verbose"),
     herdr_agent_resume_command: Some("claude --verbose --continue"),
   }
@@ -161,6 +194,7 @@ test "RawConfig::to_config keeps explicit values" {
     raw.to_config(),
     Ok(@config.CttConfig::{
       multiplexer: @config.Tmux,
+      agent: @config.AgentConfig::{ prompt_template: "Task: {context}" },
       herdr: @config.HerdrConfig::{
         agent_command: "claude --verbose",
         agent_resume_command: "claude --verbose --continue",

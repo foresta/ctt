@@ -5,4 +5,5 @@ import {
   "moonbitlang/x/fs",
   "moonbitlang/x/path",
   "moonbit-community/toml",
+  "foresta/ctt/lib/prompt",
 }

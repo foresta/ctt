@@ -89,5 +89,15 @@ pub async fn run(
           false
         }
       }
+    OptionalInput(prompt~, on_input~) =>
+      match prompter.read_line(prompt=prompt) {
+        Ok(input) if input.trim().to_owned() == "" =>
+          run(on_input(None), renderer, selector, prompter)
+        Ok(input) => run(on_input(Some(input)), renderer, selector, prompter)
+        Err(_) => {
+          renderer.print_cancelled()
+          false
+        }
+      }
   }
 }

@@ -20,6 +20,30 @@ test "new: interactive when no options" {
   assert_eq(o.branch, None)
   assert_eq(o.base, None)
   assert_eq(o.focus, true)
+  assert_eq(o.context, None)
+  assert_eq(o.context_file, None)
+}
+
+///|
+test "new: context sources" {
+  guard cmd(["new", "--context", "fix it"]) is New(o) else { fail("expected New") }
+  assert_eq(o.context, Some("fix it"))
+  guard cmd(["new", "--context-url", "https://example.com/1"]) is New(o) else {
+    fail("expected New")
+  }
+  assert_eq(o.context, Some("https://example.com/1"))
+  assert_eq(o.context_file, None)
+  guard cmd(["new", "--repo", "r", "--branch", "b", "--context-file", "-"]) is New(o) else {
+    fail("expected New")
+  }
+  assert_eq(o.context, None)
+  assert_eq(o.context_file, Some("-"))
+  guard cmd(["new", "--context-file", "-"]) is Usage(m) else { fail("expected Usage") }
+  assert_true(m.contains("--repo and --branch"))
+  guard cmd(["new", "--context", "a", "--context-file", "f"]) is Usage(m) else {
+    fail("expected Usage")
+  }
+  assert_true(m.contains("only one of"))
 }
 
 test "new: all options, both syntaxes" {

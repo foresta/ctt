@@ -141,3 +141,38 @@ async test "Menu and Input" {
   assert_false(exec(@ports.Input(prompt="p", on_input=fn(_) { @ports.Empty }), empty))
   assert_eq(empty.cancelled, 1)
 }
+
+///|
+async test "OptionalInput: empty continues with None, text with Some" {
+  let empty = recorder(input_answer="")
+  assert_true(
+    exec(
+      @ports.OptionalInput(prompt="p", on_input=fn(v) {
+        @ports.Lines([v.unwrap_or("<none>")])
+      }),
+      empty,
+    ),
+  )
+  assert_eq(empty.lines, ["<none>"])
+  assert_eq(empty.cancelled, 0)
+  let blank = recorder(input_answer="   ")
+  assert_true(
+    exec(
+      @ports.OptionalInput(prompt="p", on_input=fn(v) {
+        @ports.Lines([v.unwrap_or("<none>")])
+      }),
+      blank,
+    ),
+  )
+  assert_eq(blank.lines, ["<none>"])
+  let text = recorder(input_answer="ctx")
+  assert_true(
+    exec(
+      @ports.OptionalInput(prompt="p", on_input=fn(v) {
+        @ports.Lines([v.unwrap_or("<none>")])
+      }),
+      text,
+    ),
+  )
+  assert_eq(text.lines, ["ctx"])
+}

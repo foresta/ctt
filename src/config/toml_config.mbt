@@ -16,10 +16,18 @@ pub fn parse_config_toml(text : String) -> Result[CttConfig, String] {
     Ok(v) => v
     Err(e) => return Err(e)
   }
-  let herdr : Map[String, @toml.TomlValue] = match table.get("herdr") {
-    None => Map([])
-    Some(TomlTable(herdr)) => herdr
-    Some(_) => return Err("herdr must be a table")
+  let agent = match sub_table(table, "agent") {
+    Ok(t) => t
+    Err(e) => return Err(e)
+  }
+  let agent_prompt_template = match
+    string_key(agent, "prompt_template", prefix="agent.") {
+    Ok(v) => v
+    Err(e) => return Err(e)
+  }
+  let herdr = match sub_table(table, "herdr") {
+    Ok(t) => t
+    Err(e) => return Err(e)
   }
   let herdr_agent_command = match string_key(herdr, "agent_command", prefix="herdr.") {
     Ok(v) => v
@@ -30,7 +38,25 @@ pub fn parse_config_toml(text : String) -> Result[CttConfig, String] {
     Ok(v) => v
     Err(e) => return Err(e)
   }
-  RawConfig::{ multiplexer, herdr_agent_command, herdr_agent_resume_command }.to_config()
+  RawConfig::{
+    multiplexer,
+    agent_prompt_template,
+    herdr_agent_command,
+    herdr_agent_resume_command,
+  }.to_config()
+}
+
+///|
+/// Optional sub-table; an absent table behaves like an empty one.
+fn sub_table(
+  table : Map[String, @toml.TomlValue],
+  key : String
+) -> Result[Map[String, @toml.TomlValue], String] {
+  match table.get(key) {
+    None => Ok(Map([]))
+    Some(TomlTable(t)) => Ok(t)
+    Some(_) => Err(key + " must be a table")
+  }
 }
 
 ///|

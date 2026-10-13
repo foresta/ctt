@@ -66,6 +66,28 @@ impl @ports.FileSystem for OsFileSystem with read_file_to_string(self, path~) {
 }
 
 ///|
+/// Write a string to a file, replacing any existing content.
+impl @ports.FileSystem for OsFileSystem with write_file(self, path~, content~) {
+  let _ = self
+  try {
+    Ok(@xfs.write_string_to_file(path, content))
+  } catch {
+    IOError(msg) => Err(msg)
+  }
+}
+
+///|
+/// Remove a file.
+impl @ports.FileSystem for OsFileSystem with remove_file(self, path~) {
+  let _ = self
+  try {
+    Ok(@xfs.remove_file(path))
+  } catch {
+    IOError(msg) => Err(msg)
+  }
+}
+
+///|
 /// Find directories matching a name pattern up to max_depth.
 impl @ports.FileSystem for OsFileSystem with find_dirs(self, path~, name~, max_depth~) {
   let _ = self

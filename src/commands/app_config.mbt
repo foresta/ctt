@@ -3,6 +3,8 @@
 pub(all) struct AppConfig {
   workspace_dir : String
   config_dir : String
+  /// `[agent] prompt_template` from config.toml.
+  prompt_template : String
 }
 
 ///|

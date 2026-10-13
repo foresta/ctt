@@ -3,11 +3,17 @@
 # Terminal backend used by `ctt new` / `ctt open` / `ctt done`: "herdr" (default) or "tmux"
 multiplexer = "herdr"
 
+[agent]
+# First prompt given to the agent when a task starts with --context / --context-file /
+# --context-url. {context} is replaced with what was passed; ctt never fetches URLs.
+prompt_template = "Start working on this task. Read the context first, then plan before editing.\n\n{context}"
+
 [herdr]
 # Command run in the left pane when a workspace is created for a new worktree.
-agent_command = "claude"
+# {prompt} expands to the saved task prompt, or to nothing when there is none.
+agent_command = "claude {prompt}"
 
 # Command run instead when reopening an existing worktree. When omitted it is
-# derived from agent_command: "<agent_command> --continue || <agent_command>",
+# derived from agent_command: "<agent_command without {prompt}> --continue || <agent_command>",
 # which resumes the previous session and starts a fresh one when there is none.
-# agent_resume_command = "claude --continue || claude"
+# agent_resume_command = "claude --continue || claude {prompt}"

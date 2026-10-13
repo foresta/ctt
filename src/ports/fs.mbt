@@ -1,6 +1,6 @@
 ///|
 /// Port for filesystem operations including directory listing, path checks,
-/// directory creation, symlink creation, and file reading.
+/// directory creation, symlink creation, and file reading and writing.
 pub(open) trait FileSystem {
   read_dir(Self, path~ : String) -> Result[Array[String], String]
   path_exists(Self, path~ : String) -> Bool
@@ -8,5 +8,7 @@ pub(open) trait FileSystem {
   create_dir(Self, path~ : String) -> Result[Unit, String]
   async create_symlink(Self, src~ : String, dst~ : String) -> Result[Unit, String]
   read_file_to_string(Self, path~ : String) -> Result[String, String]
+  write_file(Self, path~ : String, content~ : String) -> Result[Unit, String]
+  remove_file(Self, path~ : String) -> Result[Unit, String]
   async find_dirs(Self, path~ : String, name~ : String, max_depth~ : Int) -> Result[Array[String], String]
 }
