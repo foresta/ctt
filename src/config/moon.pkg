@@ -1,6 +1,8 @@
 import {
   "moonbitlang/core/builtin",
+  "moonbitlang/core/debug",
   "moonbitlang/core/env",
   "moonbitlang/x/fs",
   "moonbitlang/x/path",
+  "moonbit-community/toml",
 }

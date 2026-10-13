@@ -113,16 +113,10 @@ classDiagram
 
 ```mermaid
 classDiagram
-    class SessionManager {
+    class WorkspaceManager {
         <<trait>>
-        +is_active() Bool
-        +list_windows() Result~Array~
-        +create_window(name, cwd, command) Result~Unit~
-        +kill_window(name) Result~Unit~
-    }
-    class EditorLauncher {
-        <<trait>>
-        +open(repo_name, workdir, branch, resume) Result~Unit~
+        +open(repo_name, branch, workdir, continue_session) Result~Unit~
+        +close(name) Result~Bool~
     }
     class FileSystem {
         <<trait>>
@@ -138,13 +132,13 @@ classDiagram
         +find_git_repos(workspace, max_depth) Result~Array~
     }
 
-    class TmuxSession { }
-    class NvimEditor { }
+    class TmuxWorkspace { }
+    class HerdrWorkspace { }
     class OsFileSystem { }
     class FindCommandFinder { }
 
-    TmuxSession ..|> SessionManager : tmux CLI
-    NvimEditor ..|> EditorLauncher : nvim + tmux
+    TmuxWorkspace ..|> WorkspaceManager : tmux CLI + nvim
+    HerdrWorkspace ..|> WorkspaceManager : herdr CLI
     OsFileSystem ..|> FileSystem : @fs + ln
     FindCommandFinder ..|> RepositoryFinder : find CLI
 ```
@@ -164,11 +158,10 @@ graph LR
     subgraph Traits
         FS["FileSystem"]
         SEL["ItemSelector"]
-        ED["EditorLauncher"]
+        WS["WorkspaceManager"]
         RQ["RepositoryQuery"]
         RM["RepositoryMutator"]
         PR["PullRequestService"]
-        SM["SessionManager"]
         UP["UserPrompter"]
         RF["RepositoryFinder"]
     end
@@ -179,7 +172,7 @@ graph LR
 
     Ls --> TR
     Open --> SEL
-    Open --> ED
+    Open --> WS
     Open --> TR
     Status --> SEL
     Status --> RQ
@@ -189,13 +182,13 @@ graph LR
     Done --> UP
     Done --> RQ
     Done --> RM
-    Done --> SM
+    Done --> WS
     Done --> TR
     New --> SEL
     New --> UP
     New --> RQ
     New --> RM
-    New --> ED
+    New --> WS
     New --> FS
     New --> RF
 ```
@@ -215,7 +208,7 @@ sequenceDiagram
     participant RM as RepositoryMutator
     participant UP as UserPrompter
     participant FS as FileSystem
-    participant Ed as EditorLauncher
+    participant WS as WorkspaceManager
 
     User->>Main: ctt new
     Main->>CLI: parse(args)
@@ -263,7 +256,7 @@ sequenceDiagram
     participant Sel as ItemSelector
     participant RQ as RepositoryQuery
     participant RM as RepositoryMutator
-    participant SM as SessionManager
+    participant WS as WorkspaceManager
     participant UP as UserPrompter
 
     Note over Done: タスク選択
@@ -419,32 +412,24 @@ pub(open) trait PullRequestService {
 **Adapter:** `GhCli`（gh CLI）
 **使用コマンド:** status（RepositoryQuery.get_task_status の Adapter 内部でも使用）
 
-### 6. SessionManager — ターミナルセッション管理
+### 6. WorkspaceManager — タスクのターミナル workspace
 
 ```moonbit
-pub(open) trait SessionManager {
-  is_active(Self) -> Bool  // 環境変数チェックのみ。シェル出力不要
-  async list_windows(Self) -> Result[Array[String], String]
-  async create_window(Self, name~ : String, cwd~ : String, command~ : String) -> Result[Unit, String]
-  async kill_window(Self, name~ : String) -> Result[Unit, String]
+pub(open) trait WorkspaceManager {
+  async open(Self, repo_name~ : String, branch~ : String, workdir~ : String, continue_session~ : Bool) -> Result[Unit, String]
+  async close(Self, name~ : String) -> Result[Bool, String]
 }
 ```
 
-**Adapter:** `TmuxSession`（tmux CLI）
-**使用コマンド:** done, (editor 内部)
+workspace は `<repo_name>__<branch>` で識別する。`open` は既に存在すれば focus のみ、
+`close` は存在しなければ `Ok(false)` を返す。`continue_session` はエージェント側のセッション再開を意味する。
 
-### 7. EditorLauncher — エディタ起動
+**Adapter:** `HerdrWorkspace`（herdr CLI。1 tab に左 pane = agent、右 pane = shell）、
+`TmuxWorkspace`（tmux window + nvim ClaudeCode）。`config.CttConfig.multiplexer` で
+`adapters.new_workspace_manager` が選択する。
+**使用コマンド:** new, open, done
 
-```moonbit
-pub(open) trait EditorLauncher {
-  async open(Self, repo_name~ : String, workdir~ : String, branch~ : String, resume~ : Bool) -> Result[Unit, String]
-}
-```
-
-`resume` はエディタ側のセッション再開を意味する（tmux 固有ではない）。
-
-**Adapter:** `NvimEditor`（nvim + optional tmux）
-**使用コマンド:** new, open
+### 7. (欠番)
 
 ### 8. FileSystem — ファイルシステム操作（同期のみ）
 
@@ -529,10 +514,10 @@ impl TaskRepository for OsTaskRepository with list(self) {
 | Command | 依存 |
 |---------|------|
 | `LsCommand` | `TaskRepository` |
-| `OpenCommand` | `ItemSelector`, `EditorLauncher`, `TaskRepository` |
+| `OpenCommand` | `ItemSelector`, `WorkspaceManager`, `TaskRepository` |
 | `StatusCommand` | `ItemSelector`, `RepositoryQuery`, `PullRequestService`, `TaskRepository` |
-| `DoneCommand` | `ItemSelector`, `UserPrompter`, `RepositoryQuery`, `RepositoryMutator`, `SessionManager`, `TaskRepository` |
-| `NewCommand` | `ItemSelector`, `UserPrompter`, `RepositoryQuery`, `RepositoryMutator`, `EditorLauncher`, `FileSystem`, `RepositoryFinder` |
+| `DoneCommand` | `ItemSelector`, `UserPrompter`, `RepositoryQuery`, `RepositoryMutator`, `WorkspaceManager`, `TaskRepository` |
+| `NewCommand` | `ItemSelector`, `UserPrompter`, `RepositoryQuery`, `RepositoryMutator`, `WorkspaceManager`, `FileSystem`, `RepositoryFinder` |
 
 ### コマンド struct 定義例
 
@@ -554,7 +539,7 @@ pub(all) struct NewCommand {
   prompter : &UserPrompter
   repo_query : &RepositoryQuery
   repo_mutator : &RepositoryMutator
-  editor : &EditorLauncher
+  workspace : &WorkspaceManager
   fs : &FileSystem
   repo_finder : &RepositoryFinder
   workspace_dir : String
@@ -607,8 +592,7 @@ pub(all) struct Services {
   repo_query : &RepositoryQuery
   repo_mutator : &RepositoryMutator
   pr : &PullRequestService
-  session : &SessionManager
-  editor : &EditorLauncher
+  workspace : &WorkspaceManager
   fs : &FileSystem
   repo_finder : &RepositoryFinder
   tasks : &TaskRepository
@@ -767,8 +751,7 @@ src/
     prompter.mbt            # UserPrompter
     repository.mbt          # RepositoryQuery, RepositoryMutator, BranchList
     pr.mbt                  # PullRequestService, PrStatus
-    session.mbt             # SessionManager
-    editor.mbt              # EditorLauncher
+    workspace.mbt           # WorkspaceManager
     fs.mbt                  # FileSystem
     repo_finder.mbt         # RepositoryFinder
   task/                     # タスク管理ドメイン
@@ -790,12 +773,12 @@ src/
     prompt.mbt              # ShellPrompter implements UserPrompter
     git.mbt                 # GitCli implements RepositoryQuery + RepositoryMutator
     gh.mbt                  # GhCli implements PullRequestService
-    tmux.mbt                # TmuxSession implements SessionManager
-    editor.mbt              # NvimEditor implements EditorLauncher
+    tmux.mbt                # TmuxWorkspace implements WorkspaceManager
+    herdr.mbt               # HerdrWorkspace implements WorkspaceManager
     fs.mbt                  # OsFileSystem implements FileSystem
     repo_finder.mbt         # FindCommandFinder implements RepositoryFinder
     task_repository.mbt     # OsTaskRepository implements TaskRepository
-  config/                   # パス定数（validate 含む）
+  config/                   # パス定数（validate 含む）、config.toml の読み込み
   models/                   # TaskStatus, TaskInfo
   cli/                      # 引数パース
   cmd/main/                 # DI 組み立て + エントリポイント

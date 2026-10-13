@@ -17,15 +17,15 @@ pub fn new_vcs() -> &@ports.VCS {
 }
 
 ///|
-/// Create a SessionManager backed by tmux.
-pub fn new_session_manager() -> &@ports.SessionManager {
-  TmuxSession::{}
-}
-
-///|
-/// Create an EditorLauncher backed by nvim with Claude Code.
-pub fn new_editor() -> &@ports.EditorLauncher {
-  NvimEditor::{}
+/// Create the WorkspaceManager selected by the user config.
+pub fn new_workspace_manager(
+  cfg : @config.CttConfig
+) -> &@ports.WorkspaceManager {
+  match cfg.multiplexer {
+    Herdr =>
+      (HerdrWorkspace::{ agent_command: cfg.herdr.agent_command } : &@ports.WorkspaceManager)
+    Tmux => (TmuxWorkspace::{} : &@ports.WorkspaceManager)
+  }
 }
 
 ///|

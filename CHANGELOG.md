@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- herdr backend (default): `ctt new` / `ctt open` create one herdr workspace per task with Claude Code in the left pane and a shell in the right pane; `ctt done` closes it
+- `~/.config/ctt/config.toml` with `multiplexer` (`"herdr"` | `"tmux"`) and `herdr.agent_command`
+
+### Changed
+- The default backend is now herdr; set `multiplexer = "tmux"` to keep the previous tmux + nvim behaviour
+- `ctt new` / `ctt open` now report workspace launch failures instead of ignoring them
+- tmux mode: `ctt open` selects the existing window instead of opening a duplicate
+- `ctt done` prints `Closed workspace: <name>` instead of `Closed tmux window: <name>`
+
 ## [0.1.0] - 2026-04-24
 
 ### Added

@@ -1,8 +1,8 @@
 # ctt
 
-**C**laudeCode **T**ask management on **T**mux
+**C**laudeCode **T**ask management on **T**erminal workspaces
 
-A CLI tool for managing development tasks using git worktrees. Each task runs in an isolated worktree with Neovim + ClaudeCode in a dedicated tmux window.
+A CLI tool for managing development tasks using git worktrees. Each task runs in an isolated worktree with Claude Code in its own [herdr](https://herdr.dev) workspace (default) or tmux window.
 
 Written in [MoonBit](https://www.moonbitlang.com/) and compiled to a native binary.
 
@@ -11,8 +11,8 @@ Written in [MoonBit](https://www.moonbitlang.com/) and compiled to a native bina
 - [fzf](https://github.com/junegunn/fzf)
 - git
 - [gh](https://cli.github.com/) (GitHub CLI)
-- tmux
-- Neovim + [claudecode.nvim](https://github.com/anthropics/claudecode.nvim)
+- herdr mode (default): [herdr](https://herdr.dev) and the `claude` CLI
+- tmux mode: tmux, Neovim + [claudecode.nvim](https://github.com/anthropics/claudecode.nvim)
 
 ## Installation
 
@@ -22,7 +22,7 @@ Written in [MoonBit](https://www.moonbitlang.com/) and compiled to a native bina
 brew install foresta/tap/ctt
 ```
 
-This installs a pre-built native binary and seeds `~/.config/ctt/.worktree-link-ignore` on first install.
+This installs a pre-built native binary and seeds `~/.config/ctt/.worktree-link-ignore` on first install. `config.toml` is optional; create it only to change the defaults below.
 
 ### Build from source
 
@@ -45,14 +45,34 @@ ctt <command>
 
 ### Commands
 
-- `ctt new` - Create a worktree and launch ClaudeCode
+- `ctt new` - Create a worktree and open it in a workspace with Claude Code
 - `ctt ls` - List active tasks
-- `ctt open` - Open an existing task in the editor
+- `ctt open` - Open (or focus) the workspace of an existing task
 - `ctt status` - Show task status (use `--all` for all tasks)
-- `ctt done` - Complete a task and remove its worktree
+- `ctt done` - Close the workspace, remove the worktree and optionally delete the branch
 - `ctt version` (or `ctt --version`) - Print version
 
 ## Configuration
+
+### `config.toml`
+
+`~/.config/ctt/config.toml` selects the terminal backend. All keys are optional; a missing file means the defaults below.
+
+```toml
+multiplexer = "herdr"   # "herdr" (default) or "tmux"
+
+[herdr]
+agent_command = "claude"  # command run in the left pane
+```
+
+| Key | Default | Description |
+|-----|---------|-------------|
+| `multiplexer` | `"herdr"` | Backend used by `new` / `open` / `done` |
+| `herdr.agent_command` | `"claude"` | Command run in the agent pane. Must be a single command (flags are fine, no pipes or `&&`) because ` --continue` is appended when reopening an existing worktree |
+
+**herdr mode** creates one workspace labelled `<repo>__<branch>` per task with a single tab: the left pane runs `agent_command` and the right pane is a shell in the worktree. Running `new` or `open` on a task whose workspace is already open only focuses it. `done` closes the workspace before removing the worktree.
+
+**tmux mode** keeps the original behaviour: a tmux window named `<repo>__<branch>` running `nvim . -c ClaudeCode` (`ClaudeCode --continue` on `open`), closed by `done`. If the window already exists it is selected instead of duplicated.
 
 ### `.worktree-link-ignore`
 

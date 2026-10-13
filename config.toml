@@ -1,0 +1,9 @@
+# ctt configuration (~/.config/ctt/config.toml)
+
+# Terminal backend used by `ctt new` / `ctt open` / `ctt done`: "herdr" (default) or "tmux"
+multiplexer = "herdr"
+
+[herdr]
+# Command run in the left pane of each task workspace. Use a single command
+# (flags are fine): `--continue` is appended when reopening an existing worktree.
+agent_command = "claude"

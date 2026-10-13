@@ -9,18 +9,18 @@ pub fn dispatch(
     Help => @sub_commands.new_help()
     Version => @sub_commands.new_version()
     Ls => @sub_commands.new_ls(svc.worktrees)
-    Open => @sub_commands.new_open(svc.editor, svc.worktrees)
+    Open => @sub_commands.new_open(svc.workspace, svc.worktrees)
     Status =>
       @sub_commands.new_status(svc.vcs, svc.worktrees, input.params)
     Done =>
-      @sub_commands.new_done(svc.vcs, svc.session, svc.worktrees)
+      @sub_commands.new_done(svc.vcs, svc.workspace, svc.worktrees)
     New => {
       let discovery = @domain.DiscoveryService::{ vcs: svc.vcs, fs: svc.fs }
       let worktree = @domain.WorktreeService::{
         vcs: svc.vcs, fs: svc.fs, config_dir: cfg.config_dir,
       }
       @sub_commands.new_new(
-        discovery, worktree, svc.vcs, svc.editor, svc.fs,
+        discovery, worktree, svc.vcs, svc.workspace, svc.fs,
         cfg.workspace_dir,
       )
     }
