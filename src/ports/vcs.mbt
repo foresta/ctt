@@ -77,10 +77,15 @@ pub(open) trait VCS {
   repo_marker_name(Self) -> String
   async get_worktree_status(Self, name~ : String, workdir~ : String) -> Result[WorktreeInfo, String]
   async list_branches(Self, repo_dir~ : String) -> Result[BranchList, String]
-  async branch_exists(Self, workdir~ : String, branch~ : String) -> Result[Bool, String]
+  /// Resolve the repository git directory for a worktree. Branch operations take this
+  /// so they keep working after the worktree itself has been removed.
+  async resolve_git_dir(Self, workdir~ : String) -> Result[String, String]
+  async branch_exists(Self, git_dir~ : String, branch~ : String) -> Result[Bool, String]
+  /// Branch checked out in `workdir`, or Err when it is not a git worktree.
+  async current_branch(Self, workdir~ : String) -> Result[String, String]
   async list_ignored_files(Self, repo_dir~ : String) -> Result[Array[String], String]
   async create_branch_worktree(Self, repo_dir~ : String, workdir~ : String, branch~ : String, base_branch~ : String?) -> Result[Unit, String]
   async checkout_worktree(Self, repo_dir~ : String, workdir~ : String, branch~ : String) -> Result[Unit, String]
   async remove_worktree(Self, workdir~ : String) -> Result[Unit, String]
-  async delete_branch(Self, workdir~ : String, branch~ : String, force~ : Bool) -> Result[Unit, String]
+  async delete_branch(Self, git_dir~ : String, branch~ : String, force~ : Bool) -> Result[Unit, String]
 }

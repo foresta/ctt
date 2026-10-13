@@ -28,3 +28,33 @@ pub async fn DiscoveryService::find_repos(
     .collect()
   Ok(repos)
 }
+
+///|
+/// Pick the repository named by `query` out of discovered `repos`.
+/// An absolute path must match a discovered repository exactly; a bare name
+/// matches on the directory name and must be unique.
+pub fn resolve_repo(repos : Array[String], query : String) -> Result[String, String] {
+  if query.has_prefix("/") {
+    let path = if query.length() > 1 && query.has_suffix("/") {
+      query[:query.length() - 1].to_owned()
+    } else {
+      query
+    }
+    if repos.contains(path) {
+      Ok(path)
+    } else {
+      Err("repository not found under workspace: " + path)
+    }
+  } else {
+    let matches = repos.filter(fn(r) { @path.basename(r) == query })
+    match matches.length() {
+      0 => Err("repository '\{query}' not found under workspace")
+      1 => Ok(matches[0])
+      _ =>
+        Err(
+          "repository '\{query}' is ambiguous; pass a path: " +
+          matches.join(", "),
+        )
+    }
+  }
+}

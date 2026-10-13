@@ -8,8 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Non-interactive arguments: `new --repo --branch [--base]`, `open <name>`, `done <name> --yes [--delete-branch]`, `status <name>`; omitted arguments are still asked interactively
+- `--no-focus` for `new` / `open` to create the workspace without switching to it
+- Exit status 1 on errors, unknown commands or options, and cancelled prompts; `new` / `open` print `Worktree: <path>`
 - herdr backend (default): `ctt new` / `ctt open` create one herdr workspace per task with Claude Code in the left pane and a shell in the right pane; `ctt done` closes it
 - `~/.config/ctt/config.toml` with `multiplexer` (`"herdr"` | `"tmux"`) and `herdr.agent_command`
+
+### Fixed
+- `done` never deleted the branch: it resolved the git directory from the already removed worktree
 
 ### Changed
 - The default backend is now herdr; set `multiplexer = "tmux"` to keep the previous tmux + nvim behaviour

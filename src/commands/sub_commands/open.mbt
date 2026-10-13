@@ -1,39 +1,31 @@
 ///|
-/// Opens an existing worktree in its workspace via interactive selection.
+/// Opens an existing worktree in its workspace, by name or via interactive selection.
 pub(all) struct OpenCommand {
   workspace : &@ports.WorkspaceManager
   worktrees : &@ports.WorktreeRepository
+  opts : OpenOptions
 }
 
 ///|
-/// Returns a Select step for the user to pick a worktree, then opens its workspace.
 impl @ports.Runnable for OpenCommand with run(self) {
-  let worktree_list = match self.worktrees.list() {
-    Ok(t) => t
-    Err(e) => return @ports.Error(e)
+  pick_worktree(self.worktrees, self.opts.name, "Select Worktree> ", async fn(wt) {
+    self.open_worktree(wt)
+  })
+}
+
+///|
+async fn OpenCommand::open_worktree(
+  self : OpenCommand,
+  wt : @ports.Worktree
+) -> @ports.CommandResult {
+  match self.workspace.open(
+    repo_name=wt.repo_name,
+    branch=wt.branch,
+    workdir=wt.workdir,
+    continue_session=true,
+    focus=self.opts.focus,
+  ) {
+    Ok(_) => @ports.Lines(["Opened: " + wt.name, "Worktree: " + wt.workdir])
+    Err(e) => @ports.Error(e)
   }
-  if worktree_list.is_empty() {
-    return @ports.Lines(["No active worktrees."])
-  }
-  let names = worktree_list.map(fn(t) { t.name })
-  let workspace = self.workspace
-  @ports.Select(
-    items=names,
-    prompt="Select Worktree> ",
-    on_select=async fn(name) {
-      match worktree_list.iter().find_first(fn(t) { t.name == name }) {
-        Some(wt) =>
-          match workspace.open(
-            repo_name=wt.repo_name,
-            branch=wt.branch,
-            workdir=wt.workdir,
-            continue_session=true,
-          ) {
-            Ok(_) => @ports.Lines(["Opened: " + wt.name])
-            Err(e) => @ports.Error(e)
-          }
-        None => @ports.Error("worktree not found: " + name)
-      }
-    },
-  )
 }

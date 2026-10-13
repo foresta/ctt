@@ -1,3 +1,7 @@
 import {
   "foresta/ctt/ports",
 }
+
+import {
+  "moonbitlang/async",
+} for "wbtest"

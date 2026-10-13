@@ -26,17 +26,18 @@ async fn main {
   } catch {
     err => {
       println("Error: \{err}")
-      return
+      @sys.exit(1)
     }
   }
   // Only commands that open or close a workspace need config.toml, so a
   // broken config never blocks help / version / ls / status.
   let ctt_cfg = match input.command {
-    New | Open | Done =>
+    New(_) | Open(_) | Done(_) =>
       match @config.load_config() {
         Ok(c) => c
         Err(e) => {
           println("Error: \{e}")
+          @sys.exit(1)
           return
         }
       }
@@ -49,5 +50,8 @@ async fn main {
   let (svc, cfg, console) = resolve_dependencies(cfg, ctt_cfg)
   let command = @commands.dispatch(input, svc, cfg)
   let result = command.run()
-  @interpreter.run(result, console, svc.selector, svc.prompter)
+  let ok = @interpreter.run(result, console, svc.selector, svc.prompter)
+  if !ok {
+    @sys.exit(1)
+  }
 }

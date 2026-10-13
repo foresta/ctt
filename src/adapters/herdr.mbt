@@ -43,7 +43,8 @@ async fn find_workspace(label : String) -> Result[String?, String] {
 async fn setup_workspace(
   created : @herdr.CreatedWorkspace,
   workdir : String,
-  command : String
+  command : String,
+  focus : Bool
 ) -> Result[Unit, String] {
   // Split before starting the agent so it launches at its final size.
   match herdr_exec(@herdr.pane_split_args(pane_id=created.root_pane_id, cwd=workdir)) {
@@ -58,6 +59,9 @@ async fn setup_workspace(
     Ok(_) => ()
     Err(e) => return Err(e)
   }
+  if !focus {
+    return Ok(())
+  }
   match herdr_exec(@herdr.workspace_focus_args(created.workspace_id)) {
     Ok(_) => Ok(())
     Err(e) => Err(e)
@@ -65,14 +69,18 @@ async fn setup_workspace(
 }
 
 ///|
-impl @ports.WorkspaceManager for HerdrWorkspace with open(self, repo_name~, branch~, workdir~, continue_session~) {
+impl @ports.WorkspaceManager for HerdrWorkspace with open(self, repo_name~, branch~, workdir~, continue_session~, focus~) {
   let label = @herdr.label(repo_name, branch)
   match find_workspace(label) {
-    Ok(Some(workspace_id)) =>
+    Ok(Some(workspace_id)) => {
+      if !focus {
+        return Ok(())
+      }
       return match herdr_exec(@herdr.workspace_focus_args(workspace_id)) {
         Ok(_) => Ok(())
         Err(e) => Err(e)
       }
+    }
     Ok(None) => ()
     Err(e) => return Err(e)
   }
@@ -85,7 +93,7 @@ impl @ports.WorkspaceManager for HerdrWorkspace with open(self, repo_name~, bran
     Err(e) => return Err(e)
   }
   let command = @herdr.agent_command(self.agent_command, continue_session=continue_session)
-  match setup_workspace(created, workdir, command) {
+  match setup_workspace(created, workdir, command, focus) {
     Ok(_) => Ok(())
     Err(e) => {
       // Do not leave a half-built workspace behind: a later `open` would only
