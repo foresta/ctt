@@ -1,10 +1,11 @@
 ///|
 /// Adapter that implements WorkspaceManager with the herdr CLI.
 /// Each task gets one workspace labelled `<repo_name>__<branch>` with a single
-/// tab: the left pane runs the agent command, the right pane is a shell in the
-/// worktree.
+/// tab: the left pane runs the agent command (or the resume command when the
+/// worktree already existed), the right pane is a shell in the worktree.
 pub(all) struct HerdrWorkspace {
   agent_command : String
+  agent_resume_command : String
 }
 
 ///|
@@ -92,7 +93,11 @@ impl @ports.WorkspaceManager for HerdrWorkspace with open(self, repo_name~, bran
       }
     Err(e) => return Err(e)
   }
-  let command = @herdr.agent_command(self.agent_command, continue_session=continue_session)
+  let command = @herdr.select_agent_command(
+    new_command=self.agent_command,
+    resume_command=self.agent_resume_command,
+    continue_session=continue_session,
+  )
   match setup_workspace(created, workdir, command, focus) {
     Ok(_) => Ok(())
     Err(e) => {

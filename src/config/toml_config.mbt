@@ -12,22 +12,39 @@ pub fn parse_config_toml(text : String) -> Result[CttConfig, String] {
   guard root is TomlTable(table) else {
     return Err("invalid TOML: top level must be a table")
   }
-  let multiplexer = match table.get("multiplexer") {
-    None => None
-    Some(TomlString(s)) => Some(s)
-    Some(_) => return Err("multiplexer must be a string")
+  let multiplexer = match string_key(table, "multiplexer", prefix="") {
+    Ok(v) => v
+    Err(e) => return Err(e)
   }
-  let herdr_agent_command = match table.get("herdr") {
-    None => None
-    Some(TomlTable(herdr)) =>
-      match herdr.get("agent_command") {
-        None => None
-        Some(TomlString(s)) => Some(s)
-        Some(_) => return Err("herdr.agent_command must be a string")
-      }
+  let herdr : Map[String, @toml.TomlValue] = match table.get("herdr") {
+    None => Map([])
+    Some(TomlTable(herdr)) => herdr
     Some(_) => return Err("herdr must be a table")
   }
-  RawConfig::{ multiplexer, herdr_agent_command, }.to_config()
+  let herdr_agent_command = match string_key(herdr, "agent_command", prefix="herdr.") {
+    Ok(v) => v
+    Err(e) => return Err(e)
+  }
+  let herdr_agent_resume_command = match
+    string_key(herdr, "agent_resume_command", prefix="herdr.") {
+    Ok(v) => v
+    Err(e) => return Err(e)
+  }
+  RawConfig::{ multiplexer, herdr_agent_command, herdr_agent_resume_command }.to_config()
+}
+
+///|
+/// Optional string key of a table. `prefix` names the table in error messages.
+fn string_key(
+  table : Map[String, @toml.TomlValue],
+  key : String,
+  prefix~ : String
+) -> Result[String?, String] {
+  match table.get(key) {
+    None => Ok(None)
+    Some(TomlString(s)) => Ok(Some(s))
+    Some(_) => Err(prefix + key + " must be a string")
+  }
 }
 
 ///|

@@ -4,6 +4,10 @@
 multiplexer = "herdr"
 
 [herdr]
-# Command run in the left pane of each task workspace. Use a single command
-# (flags are fine): `--continue` is appended when reopening an existing worktree.
+# Command run in the left pane when a workspace is created for a new worktree.
 agent_command = "claude"
+
+# Command run instead when reopening an existing worktree. When omitted it is
+# derived from agent_command: "<agent_command> --continue || <agent_command>",
+# which resumes the previous session and starts a fresh one when there is none.
+# agent_resume_command = "claude --continue || claude"

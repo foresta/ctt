@@ -14,8 +14,10 @@ pub extend Multiplexer with @debug.Debug::{to_repr}
 ///|
 /// Settings for the herdr backend.
 pub(all) struct HerdrConfig {
-  /// Command run in the left pane of each workspace (`--continue` is appended when resuming).
+  /// Command run in the left pane when a workspace is created for a new worktree.
   agent_command : String
+  /// Command run instead when reopening an existing worktree.
+  agent_resume_command : String
 } derive(Eq, Debug)
 
 ///|
@@ -41,9 +43,23 @@ pub extend CttConfig with @debug.Debug::{to_repr}
 pub const DEFAULT_AGENT_COMMAND : String = "claude"
 
 ///|
+/// Resume command derived from the agent command: resume the previous session,
+/// or start a fresh one when the resume fails because there is nothing to
+/// resume (`claude --continue` exits non-zero in a directory without a session).
+pub fn default_resume_command(agent_command : String) -> String {
+  "\{agent_command} --continue || \{agent_command}"
+}
+
+///|
 /// Defaults used when the config file is absent or a key is omitted.
 pub fn CttConfig::default() -> CttConfig {
-  { multiplexer: Herdr, herdr: { agent_command: DEFAULT_AGENT_COMMAND, }, }
+  {
+    multiplexer: Herdr,
+    herdr: {
+      agent_command: DEFAULT_AGENT_COMMAND,
+      agent_resume_command: default_resume_command(DEFAULT_AGENT_COMMAND),
+    },
+  }
 }
 
 ///|
@@ -52,6 +68,7 @@ pub fn CttConfig::default() -> CttConfig {
 pub(all) struct RawConfig {
   multiplexer : String?
   herdr_agent_command : String?
+  herdr_agent_resume_command : String?
 }
 
 ///|
@@ -75,16 +92,36 @@ pub fn RawConfig::to_config(self : RawConfig) -> Result[CttConfig, String] {
         Err(e) => return Err(e)
       }
   }
-  let agent_command = match self.herdr_agent_command {
-    None => DEFAULT_AGENT_COMMAND
-    Some(s) =>
-      if s.trim().to_owned() == "" {
-        return Err("herdr.agent_command must not be empty")
-      } else {
-        s
-      }
+  let agent_command = match
+    string_or_default(
+      self.herdr_agent_command, "herdr.agent_command", DEFAULT_AGENT_COMMAND,
+    ) {
+    Ok(s) => s
+    Err(e) => return Err(e)
   }
-  Ok({ multiplexer, herdr: { agent_command, }, })
+  let agent_resume_command = match
+    string_or_default(
+      self.herdr_agent_resume_command, "herdr.agent_resume_command",
+      default_resume_command(agent_command),
+    ) {
+    Ok(s) => s
+    Err(e) => return Err(e)
+  }
+  Ok({ multiplexer, herdr: { agent_command, agent_resume_command } })
+}
+
+///|
+/// The value when present (it must not be blank), otherwise `default`.
+fn string_or_default(
+  value : String?,
+  key : String,
+  default : String
+) -> Result[String, String] {
+  match value {
+    None => Ok(default)
+    Some(s) if s.trim().to_owned() == "" => Err(key + " must not be empty")
+    Some(s) => Ok(s)
+  }
 }
 
 ///|

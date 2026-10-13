@@ -86,15 +86,17 @@ ctt done ctt__feat-x --yes --delete-branch
 multiplexer = "herdr"   # "herdr" (default) or "tmux"
 
 [herdr]
-agent_command = "claude"  # command run in the left pane
+agent_command = "claude"                           # left pane, new worktree
+agent_resume_command = "claude --continue || claude"  # left pane, existing worktree
 ```
 
 | Key | Default | Description |
 |-----|---------|-------------|
 | `multiplexer` | `"herdr"` | Backend used by `new` / `open` / `done` |
-| `herdr.agent_command` | `"claude"` | Command run in the agent pane. Must be a single command (flags are fine, no pipes or `&&`) because ` --continue` is appended when reopening an existing worktree |
+| `herdr.agent_command` | `"claude"` | Shell line run in the agent pane when `new` creates a worktree |
+| `herdr.agent_resume_command` | `"<agent_command> --continue \|\| <agent_command>"` | Shell line run instead when the worktree already exists (`open`, or `new` on an existing worktree). The default resumes the last session and falls back to a fresh one when the resume exits non-zero, which is what `claude --continue` does when there is nothing to resume. Any other non-zero exit of the resumed session also starts a fresh one. The lines are typed into the pane's shell, so the default assumes a POSIX-style `\|\|`; set it explicitly for other shells |
 
-**herdr mode** creates one workspace labelled `<repo>__<branch>` per task with a single tab: the left pane runs `agent_command` and the right pane is a shell in the worktree. Running `new` or `open` on a task whose workspace is already open only focuses it. `done` closes the workspace before removing the worktree.
+**herdr mode** creates one workspace labelled `<repo>__<branch>` per task with a single tab: the left pane runs `agent_command` (or `agent_resume_command` for an existing worktree) and the right pane is a shell in the worktree. Running `new` or `open` on a task whose workspace is already open only focuses it. `done` closes the workspace before removing the worktree.
 
 **tmux mode** keeps the original behaviour: a tmux window named `<repo>__<branch>` running `nvim . -c ClaudeCode` (`ClaudeCode --continue` on `open`), closed by `done`. If the window already exists it is selected instead of duplicated.
 
