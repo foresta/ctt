@@ -13,7 +13,7 @@ impl @ports.Runnable for HelpCommand with run(self) {
       "Commands:",
       "  new      Create a worktree and launch ClaudeCode",
       "  ls       List active worktrees",
-      "  open     Open a worktree in the editor",
+      "  open     Open a worktree in its workspace",
       "  status   Show worktree status (--all for all)",
       "  done     Complete and remove a worktree",
       "  version  Print version information",

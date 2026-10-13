@@ -1,10 +1,10 @@
 ///|
-/// Creates a new task by setting up a git worktree and opening it in the editor.
+/// Creates a new task by setting up a git worktree and opening its workspace.
 pub(all) struct NewCommand {
   discovery : @domain.DiscoveryService
   worktree : @domain.WorktreeService
   vcs : &@ports.VCS
-  editor : &@ports.EditorLauncher
+  workspace : &@ports.WorkspaceManager
   fs : &@ports.FileSystem
   workspace_dir : String
 }
@@ -53,7 +53,7 @@ impl @ports.Runnable for NewCommand with run(self) {
 
 
 ///|
-/// Create a new branch worktree from base, link files, and open editor.
+/// Create a new branch worktree from base, link files, and open the workspace.
 async fn NewCommand::create_branch_and_open(
   self : NewCommand,
   repo_dir : String,
@@ -83,7 +83,7 @@ async fn NewCommand::create_branch_and_open(
 }
 
 ///|
-/// Checkout an existing branch into a worktree, link files, and open editor.
+/// Checkout an existing branch into a worktree, link files, and open the workspace.
 async fn NewCommand::checkout_and_open(
   self : NewCommand,
   repo_dir : String,
@@ -111,7 +111,7 @@ async fn NewCommand::checkout_and_open(
 }
 
 ///|
-/// Link ignored files and open editor.
+/// Link ignored files and open the workspace.
 async fn NewCommand::link_and_open(
   self : NewCommand,
   repo_dir : String,
@@ -121,9 +121,11 @@ async fn NewCommand::link_and_open(
   continue_session : Bool
 ) -> @ports.CommandResult {
   let link_messages = self.worktree.link_ignored_files(repo_dir, workdir)
-  let _ = self.editor.open(
-    repo_name=repo_name, workdir=workdir, branch=branch,
+  match self.workspace.open(
+    repo_name=repo_name, branch=branch, workdir=workdir,
     continue_session=continue_session,
-  )
-  @ports.Lines(link_messages)
+  ) {
+    Ok(_) => @ports.Lines(link_messages)
+    Err(e) => @ports.Sequence([@ports.Lines(link_messages), @ports.Error(e)])
+  }
 }

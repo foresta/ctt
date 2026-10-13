@@ -1,0 +1,139 @@
+///|
+// --- parse_config_toml ---
+
+test "empty file yields defaults" {
+  assert_eq(@config.parse_config_toml(""), Ok(@config.CttConfig::default()))
+  assert_eq(@config.CttConfig::default().multiplexer, @config.Herdr)
+  assert_eq(@config.CttConfig::default().herdr.agent_command, "claude")
+}
+
+///|
+test "multiplexer = tmux" {
+  let cfg = @config.parse_config_toml("multiplexer = \"tmux\"\n").unwrap()
+  assert_eq(cfg.multiplexer, @config.Tmux)
+  assert_eq(cfg.herdr.agent_command, "claude")
+}
+
+///|
+test "herdr with custom agent_command" {
+  let text =
+    #|multiplexer = "herdr"
+    #|
+    #|[herdr]
+    #|agent_command = "claude --model opus"
+    #|
+  let cfg = @config.parse_config_toml(text).unwrap()
+  assert_eq(cfg.multiplexer, @config.Herdr)
+  assert_eq(cfg.herdr.agent_command, "claude --model opus")
+}
+
+///|
+test "herdr table only defaults multiplexer to herdr" {
+  let text =
+    #|[herdr]
+    #|agent_command = "claude"
+    #|
+  assert_eq(@config.parse_config_toml(text).unwrap().multiplexer, @config.Herdr)
+}
+
+///|
+test "comments and unknown keys are ignored" {
+  let text =
+    #|# comment
+    #|multiplexer = "tmux" # trailing comment
+    #|future_key = 1
+    #|[tmux]
+    #|window_prefix = "x"
+    #|
+  assert_eq(@config.parse_config_toml(text).unwrap().multiplexer, @config.Tmux)
+}
+
+///|
+test "invalid multiplexer value" {
+  match @config.parse_config_toml("multiplexer = \"zellij\"\n") {
+    Err(e) => {
+      assert_true(e.contains("zellij"))
+      assert_true(e.contains("herdr"))
+      assert_true(e.contains("tmux"))
+    }
+    Ok(_) => fail("expected Err")
+  }
+}
+
+///|
+test "multiplexer of wrong type" {
+  match @config.parse_config_toml("multiplexer = 1\n") {
+    Err(e) => assert_true(e.contains("multiplexer must be a string"))
+    Ok(_) => fail("expected Err")
+  }
+}
+
+///|
+test "herdr.agent_command of wrong type" {
+  match @config.parse_config_toml("[herdr]\nagent_command = true\n") {
+    Err(e) => assert_true(e.contains("herdr.agent_command"))
+    Ok(_) => fail("expected Err")
+  }
+}
+
+///|
+test "herdr is not a table" {
+  match @config.parse_config_toml("herdr = \"x\"\n") {
+    Err(e) => assert_true(e.contains("herdr must be a table"))
+    Ok(_) => fail("expected Err")
+  }
+}
+
+///|
+test "empty agent_command is rejected" {
+  match @config.parse_config_toml("[herdr]\nagent_command = \"  \"\n") {
+    Err(e) => assert_true(e.contains("must not be empty"))
+    Ok(_) => fail("expected Err")
+  }
+}
+
+///|
+test "malformed TOML" {
+  match @config.parse_config_toml("multiplexer = \n") {
+    Err(e) => {
+      assert_true(e.contains("invalid TOML"))
+      assert_false(e.contains("FAILED"))
+    }
+    Ok(_) => fail("expected Err")
+  }
+}
+
+///|
+// --- RawConfig / multiplexer_from_string (library independent) ---
+
+test "multiplexer_from_string" {
+  assert_eq(@config.multiplexer_from_string("herdr"), Ok(@config.Herdr))
+  assert_eq(@config.multiplexer_from_string("tmux"), Ok(@config.Tmux))
+  assert_true(@config.multiplexer_from_string("HERDR") is Err(_))
+}
+
+///|
+test "RawConfig::to_config fills defaults" {
+  let raw = @config.RawConfig::{ multiplexer: None, herdr_agent_command: None, }
+  assert_eq(raw.to_config(), Ok(@config.CttConfig::default()))
+}
+
+///|
+test "RawConfig::to_config keeps explicit values" {
+  let raw = @config.RawConfig::{
+    multiplexer: Some("tmux"),
+    herdr_agent_command: Some("claude --verbose"),
+  }
+  assert_eq(
+    raw.to_config(),
+    Ok(@config.CttConfig::{
+      multiplexer: @config.Tmux,
+      herdr: @config.HerdrConfig::{ agent_command: "claude --verbose", },
+    }),
+  )
+}
+
+///|
+test "config_file ends with config.toml" {
+  assert_true(@config.config_file().has_suffix("/.config/ctt/config.toml"))
+}

@@ -1,8 +1,8 @@
 ///|
-/// Completes a worktree by removing it, optionally closing its tmux window and deleting its branch.
+/// Completes a worktree by removing it, closing its workspace and deleting its branch.
 pub(all) struct DoneCommand {
   vcs : &@ports.VCS
-  session : &@ports.SessionManager
+  workspace : &@ports.WorkspaceManager
   worktrees : &@ports.WorktreeRepository
 }
 
@@ -18,7 +18,7 @@ impl @ports.Runnable for DoneCommand with run(self) {
   }
   let names = worktree_list.map(fn(t) { t.name })
   let vcs = self.vcs
-  let session = self.session
+  let workspace = self.workspace
   @ports.Select(
     items=names,
     prompt="Select Worktree to Complete> ",
@@ -52,7 +52,7 @@ impl @ports.Runnable for DoneCommand with run(self) {
         @ports.Confirm(
           prompt=confirm_prompt,
           on_yes=async fn() {
-            done_after_confirm(vcs, session, wt, name)
+            done_after_confirm(vcs, workspace, wt, name)
           },
         ),
       ])
@@ -61,24 +61,19 @@ impl @ports.Runnable for DoneCommand with run(self) {
 }
 
 ///|
-/// Post-confirm: handle tmux window, remove worktree, delete branch.
+/// Post-confirm: close workspace, remove worktree, delete branch.
 async fn done_after_confirm(
   vcs : &@ports.VCS,
-  session : &@ports.SessionManager,
+  workspace : &@ports.WorkspaceManager,
   wt : @ports.Worktree,
   name : String
 ) -> @ports.CommandResult {
   let output : Array[String] = []
-  // Kill tmux window if exists
-  if session.is_active() {
-    match session.list_windows() {
-      Ok(windows) =>
-        if windows.contains(name) {
-          let _ = session.kill_window(name=name)
-          output.push("Closed tmux window: " + name)
-        }
-      Err(_) => ()
-    }
+  // Close the workspace if one is open (non-fatal)
+  match workspace.close(name=name) {
+    Ok(true) => output.push("Closed workspace: " + name)
+    Ok(false) => ()
+    Err(e) => output.push("Warning: failed to close workspace: " + e)
   }
   // Remove worktree
   match vcs.remove_worktree(workdir=wt.workdir) {

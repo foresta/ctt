@@ -19,10 +19,10 @@ pub fn new_ls(worktrees : &@ports.WorktreeRepository) -> &@ports.Runnable {
 ///|
 /// Create an OpenCommand as a Runnable.
 pub fn new_open(
-  editor : &@ports.EditorLauncher,
+  workspace : &@ports.WorkspaceManager,
   worktrees : &@ports.WorktreeRepository
 ) -> &@ports.Runnable {
-  OpenCommand::{ editor, worktrees }
+  OpenCommand::{ workspace, worktrees }
 }
 
 ///|
@@ -39,10 +39,10 @@ pub fn new_status(
 /// Create a DoneCommand as a Runnable.
 pub fn new_done(
   vcs : &@ports.VCS,
-  session : &@ports.SessionManager,
+  workspace : &@ports.WorkspaceManager,
   worktrees : &@ports.WorktreeRepository
 ) -> &@ports.Runnable {
-  DoneCommand::{ vcs, session, worktrees }
+  DoneCommand::{ vcs, workspace, worktrees }
 }
 
 ///|
@@ -51,12 +51,12 @@ pub fn new_new(
   discovery : @domain.DiscoveryService,
   worktree : @domain.WorktreeService,
   vcs : &@ports.VCS,
-  editor : &@ports.EditorLauncher,
+  workspace : &@ports.WorkspaceManager,
   fs : &@ports.FileSystem,
   workspace_dir : String
 ) -> &@ports.Runnable {
   NewCommand::{
-    discovery, worktree, vcs, editor, fs,
+    discovery, worktree, vcs, workspace, fs,
     workspace_dir,
   }
 }

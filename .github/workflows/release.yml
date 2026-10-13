@@ -44,7 +44,7 @@ jobs:
           VERSION="${GITHUB_REF_NAME#v}"
           ARCHIVE="ctt-${GITHUB_REF_NAME}-${{ matrix.target }}.tar.gz"
           cp src/_build/native/release/build/cmd/main/main.exe ctt
-          tar czf "$ARCHIVE" ctt .worktree-link-ignore LICENSE README.md
+          tar czf "$ARCHIVE" ctt .worktree-link-ignore config.toml LICENSE README.md
           sha256sum "$ARCHIVE" > "${ARCHIVE}.sha256"
           echo "ARCHIVE=$ARCHIVE" >> $GITHUB_ENV
 

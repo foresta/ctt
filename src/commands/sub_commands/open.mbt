@@ -1,12 +1,12 @@
 ///|
-/// Opens an existing worktree in the editor via interactive selection.
+/// Opens an existing worktree in its workspace via interactive selection.
 pub(all) struct OpenCommand {
-  editor : &@ports.EditorLauncher
+  workspace : &@ports.WorkspaceManager
   worktrees : &@ports.WorktreeRepository
 }
 
 ///|
-/// Returns a Select step for the user to pick a worktree, then opens the editor.
+/// Returns a Select step for the user to pick a worktree, then opens its workspace.
 impl @ports.Runnable for OpenCommand with run(self) {
   let worktree_list = match self.worktrees.list() {
     Ok(t) => t
@@ -16,21 +16,22 @@ impl @ports.Runnable for OpenCommand with run(self) {
     return @ports.Lines(["No active worktrees."])
   }
   let names = worktree_list.map(fn(t) { t.name })
-  let editor = self.editor
+  let workspace = self.workspace
   @ports.Select(
     items=names,
     prompt="Select Worktree> ",
     on_select=async fn(name) {
       match worktree_list.iter().find_first(fn(t) { t.name == name }) {
-        Some(wt) => {
-          let _ = editor.open(
+        Some(wt) =>
+          match workspace.open(
             repo_name=wt.repo_name,
-            workdir=wt.workdir,
             branch=wt.branch,
+            workdir=wt.workdir,
             continue_session=true,
-          )
-          @ports.Lines(["Opened: " + wt.name])
-        }
+          ) {
+            Ok(_) => @ports.Lines(["Opened: " + wt.name])
+            Err(e) => @ports.Error(e)
+          }
         None => @ports.Error("worktree not found: " + name)
       }
     },

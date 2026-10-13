@@ -4,8 +4,7 @@ pub(all) struct Services {
   selector : &@ports.ItemSelector
   prompter : &@ports.UserPrompter
   vcs : &@ports.VCS
-  session : &@ports.SessionManager
-  editor : &@ports.EditorLauncher
+  workspace : &@ports.WorkspaceManager
   fs : &@ports.FileSystem
   worktrees : &@ports.WorktreeRepository
 }

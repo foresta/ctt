@@ -19,10 +19,12 @@ install: build
 	mkdir -p $(BIN_DIR) $(CONFIG_DIR)
 	cp $(SRC_DIR)/_build/native/release/build/cmd/main/main.exe $(BIN_DIR)/ctt
 	test -f $(CONFIG_DIR)/.worktree-link-ignore || cp .worktree-link-ignore $(CONFIG_DIR)/.worktree-link-ignore
+	test -f $(CONFIG_DIR)/config.toml || cp config.toml $(CONFIG_DIR)/config.toml
 
 uninstall:
 	rm -f $(BIN_DIR)/ctt
 	rm -f $(CONFIG_DIR)/.worktree-link-ignore
+	rm -f $(CONFIG_DIR)/config.toml
 	rmdir $(CONFIG_DIR) 2>/dev/null || true
 
 clean:

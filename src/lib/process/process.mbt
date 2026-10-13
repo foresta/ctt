@@ -30,3 +30,22 @@ pub async fn exec_cmd_stdout(
   }
   (status, @utf8.decode_lossy(output.binary()[:]))
 }
+
+///|
+/// Like exec_cmd but returns stdout and stderr separately.
+/// Used for tools that print results on stdout and errors on stderr (e.g. herdr).
+pub async fn exec_cmd_split(
+  cmd : String,
+  args : Array[String],
+  cwd~ : String = ""
+) -> (Int, String, String) {
+  let (status, out, err) = match cwd {
+    "" => @async_process.collect_output(cmd, args)
+    d => @async_process.collect_output(cmd, args, cwd=d)
+  }
+  (
+    status,
+    @utf8.decode_lossy(out.binary()[:]),
+    @utf8.decode_lossy(err.binary()[:]),
+  )
+}
