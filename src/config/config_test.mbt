@@ -5,6 +5,10 @@ test "empty file yields defaults" {
   assert_eq(@config.parse_config_toml(""), Ok(@config.CttConfig::default()))
   assert_eq(@config.CttConfig::default().multiplexer, @config.Herdr)
   assert_eq(@config.CttConfig::default().herdr.agent_command, "claude")
+  assert_eq(
+    @config.CttConfig::default().herdr.agent_resume_command,
+    "claude --continue || claude",
+  )
 }
 
 ///|
@@ -25,6 +29,30 @@ test "herdr with custom agent_command" {
   let cfg = @config.parse_config_toml(text).unwrap()
   assert_eq(cfg.multiplexer, @config.Herdr)
   assert_eq(cfg.herdr.agent_command, "claude --model opus")
+  // The resume command follows a customized agent command.
+  assert_eq(
+    cfg.herdr.agent_resume_command,
+    "claude --model opus --continue || claude --model opus",
+  )
+}
+
+///|
+test "herdr with custom agent_resume_command" {
+  let text =
+    #|[herdr]
+    #|agent_resume_command = "claude --resume"
+    #|
+  let cfg = @config.parse_config_toml(text).unwrap()
+  assert_eq(cfg.herdr.agent_command, "claude")
+  assert_eq(cfg.herdr.agent_resume_command, "claude --resume")
+  match @config.parse_config_toml("[herdr]\nagent_resume_command = 1\n") {
+    Err(e) => assert_true(e.contains("herdr.agent_resume_command"))
+    Ok(_) => fail("expected Err")
+  }
+  match @config.parse_config_toml("[herdr]\nagent_resume_command = \"\"\n") {
+    Err(e) => assert_true(e.contains("must not be empty"))
+    Ok(_) => fail("expected Err")
+  }
 }
 
 ///|
@@ -114,7 +142,11 @@ test "multiplexer_from_string" {
 
 ///|
 test "RawConfig::to_config fills defaults" {
-  let raw = @config.RawConfig::{ multiplexer: None, herdr_agent_command: None, }
+  let raw = @config.RawConfig::{
+    multiplexer: None,
+    herdr_agent_command: None,
+    herdr_agent_resume_command: None,
+  }
   assert_eq(raw.to_config(), Ok(@config.CttConfig::default()))
 }
 
@@ -123,12 +155,16 @@ test "RawConfig::to_config keeps explicit values" {
   let raw = @config.RawConfig::{
     multiplexer: Some("tmux"),
     herdr_agent_command: Some("claude --verbose"),
+    herdr_agent_resume_command: Some("claude --verbose --continue"),
   }
   assert_eq(
     raw.to_config(),
     Ok(@config.CttConfig::{
       multiplexer: @config.Tmux,
-      herdr: @config.HerdrConfig::{ agent_command: "claude --verbose", },
+      herdr: @config.HerdrConfig::{
+        agent_command: "claude --verbose",
+        agent_resume_command: "claude --verbose --continue",
+      },
     }),
   )
 }

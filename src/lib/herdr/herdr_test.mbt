@@ -6,15 +6,19 @@ test "label joins repo and branch with __" {
 }
 
 ///|
-test "agent_command without continue" {
-  assert_eq(@herdr.agent_command("claude", continue_session=false), "claude")
-}
-
-///|
-test "agent_command with continue" {
+test "select_agent_command picks resume only for an existing worktree" {
+  let resumed = "claude --continue || claude"
   assert_eq(
-    @herdr.agent_command("claude --model opus", continue_session=true),
-    "claude --model opus --continue",
+    @herdr.select_agent_command(
+      new_command="claude", resume_command=resumed, continue_session=false,
+    ),
+    "claude",
+  )
+  assert_eq(
+    @herdr.select_agent_command(
+      new_command="claude", resume_command=resumed, continue_session=true,
+    ),
+    resumed,
   )
 }
 

@@ -38,12 +38,16 @@ pub fn label(repo_name : String, branch : String) -> String {
 }
 
 ///|
-/// Command run in the agent pane. Appends `--continue` when resuming a session.
-pub fn agent_command(base : String, continue_session~ : Bool) -> String {
+/// Shell line for the agent pane: `resume` when the worktree already existed.
+pub fn select_agent_command(
+  new_command~ : String,
+  resume_command~ : String,
+  continue_session~ : Bool
+) -> String {
   if continue_session {
-    base + " --continue"
+    resume_command
   } else {
-    base
+    new_command
   }
 }
 

@@ -12,7 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `--no-focus` for `new` / `open` to create the workspace without switching to it
 - Exit status 1 on errors, unknown commands or options, and cancelled prompts; `new` / `open` print `Worktree: <path>`
 - herdr backend (default): `ctt new` / `ctt open` create one herdr workspace per task with Claude Code in the left pane and a shell in the right pane; `ctt done` closes it
-- `~/.config/ctt/config.toml` with `multiplexer` (`"herdr"` | `"tmux"`) and `herdr.agent_command`
+- `~/.config/ctt/config.toml` with `multiplexer` (`"herdr"` | `"tmux"`), `herdr.agent_command` and `herdr.agent_resume_command`
+- Reopening a worktree whose Claude session was never written falls back to a fresh session: the resume command defaults to `<agent_command> --continue || <agent_command>`
 
 ### Fixed
 - `done` never deleted the branch: it resolved the git directory from the already removed worktree

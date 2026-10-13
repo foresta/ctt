@@ -23,7 +23,10 @@ pub fn new_workspace_manager(
 ) -> &@ports.WorkspaceManager {
   match cfg.multiplexer {
     Herdr =>
-      (HerdrWorkspace::{ agent_command: cfg.herdr.agent_command } : &@ports.WorkspaceManager)
+      (HerdrWorkspace::{
+        agent_command: cfg.herdr.agent_command,
+        agent_resume_command: cfg.herdr.agent_resume_command,
+      } : &@ports.WorkspaceManager)
     Tmux => (TmuxWorkspace::{} : &@ports.WorkspaceManager)
   }
 }
