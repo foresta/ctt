@@ -14,13 +14,11 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
+        # MoonBit's installer only supports arm64 on macOS, so only that target is built.
         include:
           - os: macos-14
             arch: arm64
             target: darwin-arm64
-          - os: macos-13
-            arch: x64
-            target: darwin-x64
 
     steps:
       - uses: actions/checkout@v4
@@ -62,7 +60,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       arm64_sha: ${{ steps.sha.outputs.arm64 }}
-      x64_sha: ${{ steps.sha.outputs.x64 }}
 
     steps:
       - uses: actions/checkout@v4
@@ -76,9 +73,7 @@ jobs:
         id: sha
         run: |
           ARM64_SHA=$(cat ctt-${GITHUB_REF_NAME}-darwin-arm64.tar.gz.sha256 | awk '{print $1}')
-          X64_SHA=$(cat ctt-${GITHUB_REF_NAME}-darwin-x64.tar.gz.sha256 | awk '{print $1}')
           echo "arm64=$ARM64_SHA" >> $GITHUB_OUTPUT
-          echo "x64=$X64_SHA" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
         env:
@@ -87,9 +82,7 @@ jobs:
           gh release create "${GITHUB_REF_NAME}" \
             --generate-notes \
             ctt-${GITHUB_REF_NAME}-darwin-arm64.tar.gz \
-            ctt-${GITHUB_REF_NAME}-darwin-arm64.tar.gz.sha256 \
-            ctt-${GITHUB_REF_NAME}-darwin-x64.tar.gz \
-            ctt-${GITHUB_REF_NAME}-darwin-x64.tar.gz.sha256
+            ctt-${GITHUB_REF_NAME}-darwin-arm64.tar.gz.sha256
 
   bump-tap:
     name: Update Homebrew tap
@@ -108,16 +101,12 @@ jobs:
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           ARM64_SHA="${{ needs.release.outputs.arm64_sha }}"
-          X64_SHA="${{ needs.release.outputs.x64_sha }}"
           FORMULA="homebrew-tap/Formula/ctt.rb"
 
           sed -i "s/version \"[^\"]*\"/version \"$VERSION\"/" "$FORMULA"
           # arm64 URL and SHA (appears first in on_arm block)
           sed -i "/on_arm/,/end/ s|url \"[^\"]*\"|url \"https://github.com/foresta/ctt/releases/download/${GITHUB_REF_NAME}/ctt-${GITHUB_REF_NAME}-darwin-arm64.tar.gz\"|" "$FORMULA"
           sed -i "/on_arm/,/end/ s/sha256 \"[^\"]*\"/sha256 \"$ARM64_SHA\"/" "$FORMULA"
-          # x64 URL and SHA (appears in on_intel block)
-          sed -i "/on_intel/,/end/ s|url \"[^\"]*\"|url \"https://github.com/foresta/ctt/releases/download/${GITHUB_REF_NAME}/ctt-${GITHUB_REF_NAME}-darwin-x64.tar.gz\"|" "$FORMULA"
-          sed -i "/on_intel/,/end/ s/sha256 \"[^\"]*\"/sha256 \"$X64_SHA\"/" "$FORMULA"
 
       - name: Commit and push
         run: |

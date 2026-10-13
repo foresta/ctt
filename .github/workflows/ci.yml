@@ -8,11 +8,9 @@ on:
 
 jobs:
   check:
-    name: Check (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [macos-14, macos-13]
+    name: Check
+    # MoonBit's installer only supports arm64 on macOS, so there is no Intel job.
+    runs-on: macos-14
 
     steps:
       - uses: actions/checkout@v4
