@@ -11,6 +11,12 @@ pub fn new_version() -> &@ports.Runnable {
 }
 
 ///|
+/// Create a UsageErrorCommand as a Runnable.
+pub fn new_usage_error(message : String) -> &@ports.Runnable {
+  UsageErrorCommand::{ message, }
+}
+
+///|
 /// Create an LsCommand as a Runnable.
 pub fn new_ls(worktrees : &@ports.WorktreeRepository) -> &@ports.Runnable {
   LsCommand::{ worktrees, }
@@ -20,9 +26,10 @@ pub fn new_ls(worktrees : &@ports.WorktreeRepository) -> &@ports.Runnable {
 /// Create an OpenCommand as a Runnable.
 pub fn new_open(
   workspace : &@ports.WorkspaceManager,
-  worktrees : &@ports.WorktreeRepository
+  worktrees : &@ports.WorktreeRepository,
+  opts : OpenOptions
 ) -> &@ports.Runnable {
-  OpenCommand::{ workspace, worktrees }
+  OpenCommand::{ workspace, worktrees, opts }
 }
 
 ///|
@@ -30,9 +37,9 @@ pub fn new_open(
 pub fn new_status(
   vcs : &@ports.VCS,
   worktrees : &@ports.WorktreeRepository,
-  params : Array[String]
+  opts : StatusOptions
 ) -> &@ports.Runnable {
-  StatusCommand::{ vcs, worktrees, params }
+  StatusCommand::{ vcs, worktrees, opts }
 }
 
 ///|
@@ -40,9 +47,10 @@ pub fn new_status(
 pub fn new_done(
   vcs : &@ports.VCS,
   workspace : &@ports.WorkspaceManager,
-  worktrees : &@ports.WorktreeRepository
+  worktrees : &@ports.WorktreeRepository,
+  opts : DoneOptions
 ) -> &@ports.Runnable {
-  DoneCommand::{ vcs, workspace, worktrees }
+  DoneCommand::{ vcs, workspace, worktrees, opts }
 }
 
 ///|
@@ -53,10 +61,11 @@ pub fn new_new(
   vcs : &@ports.VCS,
   workspace : &@ports.WorkspaceManager,
   fs : &@ports.FileSystem,
-  workspace_dir : String
+  workspace_dir : String,
+  opts : NewOptions
 ) -> &@ports.Runnable {
   NewCommand::{
     discovery, worktree, vcs, workspace, fs,
-    workspace_dir,
+    workspace_dir, opts,
   }
 }

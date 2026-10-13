@@ -52,6 +52,30 @@ ctt <command>
 - `ctt done` - Close the workspace, remove the worktree and optionally delete the branch
 - `ctt version` (or `ctt --version`) - Print version
 
+Without arguments, `new`, `open`, `status` and `done` ask for what they need with fzf.
+
+### Non-interactive usage
+
+Every prompt can be answered up front, which makes `ctt` usable from scripts and coding agents. Only the prompts you leave out are shown.
+
+```bash
+ctt new --repo ctt --branch main --no-focus            # check out an existing branch
+ctt new --repo ctt --branch feat-x --base main         # create feat-x from main
+ctt open ctt__feat-x --no-focus
+ctt status ctt__feat-x
+ctt done ctt__feat-x --yes --delete-branch
+```
+
+| Option | Applies to | Meaning |
+|--------|-----------|---------|
+| `--repo <name\|path>` | `new` | Repository under the workspace, by directory name or absolute path. Ambiguous names must be given as a path |
+| `--branch <branch>` | `new` | Branch to check out. With `--base`, the branch is created from `--base` instead |
+| `--no-focus` | `new`, `open` | Create the workspace without switching to it |
+| `--yes` | `done` | Skip the removal confirmation. The branch is kept unless `--delete-branch` is also given |
+| `--delete-branch` | `done` | Delete the local branch with `git branch -d`; an unmerged branch is left in place with a warning |
+
+`new` with `--branch` reuses an existing worktree without asking (after checking it is on that branch), so it is safe to run repeatedly. `new` and `open` print `Worktree: <path>` as their last line. The exit status is 1 on any error, unknown command or option, or cancelled prompt. In tmux mode, `--no-focus` requires running inside tmux.
+
 ## Configuration
 
 ### `config.toml`

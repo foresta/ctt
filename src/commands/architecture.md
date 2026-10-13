@@ -304,6 +304,12 @@ sequenceDiagram
     Done-->>User: Task completed
 ```
 
+## 非対話モード
+
+引数の解釈は `cli` に閉じ、`Command` の各 variant が型付きオプション（`NewOptions` 等）を持つ。
+コマンドは回答済みの段では `Select` / `Confirm` を作らず直接次の段を呼ぶ。詳細は `docs/design.md`。
+`interpreter.run` は `Bool` を返し、`main` が失敗時に終了コード 1 で終わる。
+
 ## 設計原則
 
 1. **依存方向:** `commands (UseCase) → ports (Trait) ← services (Adapter)`
@@ -416,10 +422,12 @@ pub(open) trait PullRequestService {
 
 ```moonbit
 pub(open) trait WorkspaceManager {
-  async open(Self, repo_name~ : String, branch~ : String, workdir~ : String, continue_session~ : Bool) -> Result[Unit, String]
+  async open(Self, repo_name~ : String, branch~ : String, workdir~ : String, continue_session~ : Bool, focus~ : Bool) -> Result[Unit, String]
   async close(Self, name~ : String) -> Result[Bool, String]
 }
 ```
+
+`focus=false`（`--no-focus`）のときは workspace を作るだけで前面に出さない。
 
 workspace は `<repo_name>__<branch>` で識別する。`open` は既に存在すれば focus のみ、
 `close` は存在しなければ `Ok(false)` を返す。`continue_session` はエージェント側のセッション再開を意味する。

@@ -132,13 +132,30 @@ impl @ports.VCS for GitCli with list_branches(self, repo_dir~) {
 }
 
 ///|
-/// Check whether a branch exists in the given worktree's repository.
-impl @ports.VCS for GitCli with branch_exists(self, workdir~, branch~) {
+/// Resolve the git common directory for a worktree.
+impl @ports.VCS for GitCli with resolve_git_dir(self, workdir~) {
   let _ = self
-  let git_dir = match resolve_git_dir(workdir) {
-    Ok(d) => d
-    Err(e) => return Err(e)
+  resolve_git_dir(workdir)
+}
+
+///|
+/// Branch checked out in a worktree directory.
+impl @ports.VCS for GitCli with current_branch(self, workdir~) {
+  let _ = self
+  let (status, output) = git_run(
+    ["-C", workdir, "rev-parse", "--abbrev-ref", "HEAD"],
+  )
+  if status != 0 {
+    Err("not a git worktree: " + workdir)
+  } else {
+    Ok(output)
   }
+}
+
+///|
+/// Check whether a branch exists in the repository at `git_dir`.
+impl @ports.VCS for GitCli with branch_exists(self, git_dir~, branch~) {
+  let _ = self
   let (status, output) = git_run(
     ["--git-dir=" + git_dir, "branch", "--list", branch],
   )
@@ -235,13 +252,9 @@ impl @ports.VCS for GitCli with remove_worktree(self, workdir~) {
 ///|
 /// Delete a branch, optionally with force.
 impl @ports.VCS for GitCli with delete_branch(
-  self, workdir~, branch~, force~
+  self, git_dir~, branch~, force~
 ) {
   let _ = self
-  let git_dir = match resolve_git_dir(workdir) {
-    Ok(d) => d
-    Err(e) => return Err(e)
-  }
   let flag = if force { "-D" } else { "-d" }
   let (status, output) = git_run(
     ["--git-dir=" + git_dir, "branch", flag, branch],

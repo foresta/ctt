@@ -1,18 +1,19 @@
 ///|
-/// Available CLI subcommands.
+/// Available CLI subcommands with their parsed options.
 pub(all) enum Command {
   Ls
-  Open
-  Status
-  Done
-  New
+  Open(@sub_commands.OpenOptions)
+  Status(@sub_commands.StatusOptions)
+  Done(@sub_commands.DoneOptions)
+  New(@sub_commands.NewOptions)
   Help
   Version
+  /// Argument error: the message is reported and the process exits with 1.
+  Usage(String)
 }
 
 ///|
-/// Parsed CLI input containing the resolved command and its parameters.
+/// Parsed CLI input.
 pub(all) struct CommandInput {
   command : Command
-  params : Array[String]
 }

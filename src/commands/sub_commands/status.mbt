@@ -16,37 +16,27 @@ async fn build_status_table(
 }
 
 ///|
-/// Shows git and PR status for worktrees. `--all` shows all, otherwise prompts for selection.
+/// Shows git and PR status for worktrees: all of them, one by name, or one picked interactively.
 pub(all) struct StatusCommand {
   vcs : &@ports.VCS
   worktrees : &@ports.WorktreeRepository
-  params : Array[String]
+  opts : StatusOptions
 }
 
 ///|
-/// Returns a Table for --all, or a Select step then Table for a single worktree.
 impl @ports.Runnable for StatusCommand with run(self) {
-  let show_all = self.params.length() > 0 && self.params[0] == "--all"
-  let worktree_list = match self.worktrees.list() {
-    Ok(t) => t
-    Err(e) => return @ports.Error(e)
-  }
-  if worktree_list.is_empty() {
-    return @ports.Lines(["No active worktrees."])
-  }
-  if show_all {
+  if self.opts.all {
+    let worktree_list = match self.worktrees.list() {
+      Ok(t) => t
+      Err(e) => return @ports.Error(e)
+    }
+    if worktree_list.is_empty() {
+      return @ports.Lines(["No active worktrees."])
+    }
     return build_status_table(self.vcs, worktree_list)
   }
-  let names = worktree_list.map(fn(t) { t.name })
   let vcs = self.vcs
-  @ports.Select(
-    items=names,
-    prompt="Select Worktree> ",
-    on_select=async fn(name) {
-      match worktree_list.iter().find_first(fn(t) { t.name == name }) {
-        Some(wt) => build_status_table(vcs, [wt])
-        None => @ports.Error("worktree not found: " + name)
-      }
-    },
-  )
+  pick_worktree(self.worktrees, self.opts.name, "Select Worktree> ", async fn(wt) {
+    build_status_table(vcs, [wt])
+  })
 }
