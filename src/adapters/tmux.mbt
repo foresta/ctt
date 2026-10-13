@@ -44,8 +44,9 @@ async fn tmux_run(args : Array[String]) -> Result[Unit, String] {
 /// Open nvim with Claude Code in a new tmux window (or select the task's
 /// window when it already exists). Outside tmux, nvim runs in the current
 /// terminal when focus is requested; `focus=false` is an error there.
-impl @ports.WorkspaceManager for TmuxWorkspace with open(self, repo_name~, branch~, workdir~, continue_session~, focus~) {
-  let _ = self
+impl @ports.WorkspaceManager for TmuxWorkspace with open(self, repo_name~, branch~, workdir~, continue_session~, focus~, prompt_file~) {
+  // The ClaudeCode nvim plugin cannot take an initial prompt.
+  let _ = (self, prompt_file)
   let tmux_window_name = "\{repo_name}__\{branch}"
   let terminal_title = "Claude: \{repo_name} [\{branch}]"
   let claude_cmd = if continue_session {
@@ -56,10 +57,13 @@ impl @ports.WorkspaceManager for TmuxWorkspace with open(self, repo_name~, branc
   if in_tmux() {
     if tmux_list_windows().contains(tmux_window_name) {
       if !focus {
-        return Ok(())
+        return Ok(Reused)
       }
       println("Selecting existing tmux window...")
-      return tmux_run(["select-window", "-t", tmux_window_name])
+      return match tmux_run(["select-window", "-t", tmux_window_name]) {
+        Ok(_) => Ok(Reused)
+        Err(e) => Err(e)
+      }
     }
     println("Opening in new tmux window...")
     let cmd = "printf '\\033]0;\{terminal_title}\\007'; nvim . -c \"\{claude_cmd}\""
@@ -68,15 +72,24 @@ impl @ports.WorkspaceManager for TmuxWorkspace with open(self, repo_name~, branc
       args.push("-d")
     }
     args.push(cmd)
-    tmux_run(args)
+    match tmux_run(args) {
+      Ok(_) => Ok(Created)
+      Err(e) => Err(e)
+    }
   } else if !focus {
     Err("not inside tmux: cannot open a window without focus")
   } else {
     println("Warning: not in tmux session. Opening in current terminal...")
     let _ = @process.run("nvim", [".", "-c", claude_cmd], cwd=workdir)
 
-    Ok(())
+    Ok(Created)
   }
+}
+
+///|
+impl @ports.WorkspaceManager for TmuxWorkspace with supports_prompt(self) {
+  let _ = self
+  false
 }
 
 ///|

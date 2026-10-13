@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `new --context <text>` / `--context-file <path|->` / `--context-url <url>` (and an optional prompt in the interactive flow): the text is filled into `[agent] prompt_template`, saved under `~/.config/ctt/tasks/`, and handed to the agent as its first prompt through the `{prompt}` placeholder in `herdr.agent_command` / `agent_resume_command`
 - Non-interactive arguments: `new --repo --branch [--base]`, `open <name>`, `done <name> --yes [--delete-branch]`, `status <name>`; omitted arguments are still asked interactively
 - `--no-focus` for `new` / `open` to create the workspace without switching to it
 - Exit status 1 on errors, unknown commands or options, and cancelled prompts; `new` / `open` print `Worktree: <path>`

@@ -10,19 +10,24 @@ pub fn dispatch(
     Version => @sub_commands.new_version()
     Usage(message) => @sub_commands.new_usage_error(message)
     Ls => @sub_commands.new_ls(svc.worktrees)
-    Open(opts) => @sub_commands.new_open(svc.workspace, svc.worktrees, opts)
+    Open(opts) =>
+      @sub_commands.new_open(svc.workspace, svc.worktrees, worktree_service(svc, cfg), opts)
     Status(opts) => @sub_commands.new_status(svc.vcs, svc.worktrees, opts)
     Done(opts) =>
-      @sub_commands.new_done(svc.vcs, svc.workspace, svc.worktrees, opts)
+      @sub_commands.new_done(
+        svc.vcs, svc.workspace, svc.worktrees, worktree_service(svc, cfg), opts,
+      )
     New(opts) => {
       let discovery = @domain.DiscoveryService::{ vcs: svc.vcs, fs: svc.fs }
-      let worktree = @domain.WorktreeService::{
-        vcs: svc.vcs, fs: svc.fs, config_dir: cfg.config_dir,
-      }
       @sub_commands.new_new(
-        discovery, worktree, svc.vcs, svc.workspace, svc.fs,
-        cfg.workspace_dir, opts,
+        discovery, worktree_service(svc, cfg), svc.vcs, svc.workspace, svc.fs,
+        cfg.workspace_dir, cfg.prompt_template, opts,
       )
     }
   }
+}
+
+///|
+fn worktree_service(svc : Services, cfg : AppConfig) -> @domain.WorktreeService {
+  @domain.WorktreeService::{ vcs: svc.vcs, fs: svc.fs, config_dir: cfg.config_dir }
 }

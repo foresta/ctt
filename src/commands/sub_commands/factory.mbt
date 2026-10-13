@@ -27,9 +27,10 @@ pub fn new_ls(worktrees : &@ports.WorktreeRepository) -> &@ports.Runnable {
 pub fn new_open(
   workspace : &@ports.WorkspaceManager,
   worktrees : &@ports.WorktreeRepository,
+  worktree : @domain.WorktreeService,
   opts : OpenOptions
 ) -> &@ports.Runnable {
-  OpenCommand::{ workspace, worktrees, opts }
+  OpenCommand::{ workspace, worktrees, worktree, opts }
 }
 
 ///|
@@ -48,9 +49,10 @@ pub fn new_done(
   vcs : &@ports.VCS,
   workspace : &@ports.WorkspaceManager,
   worktrees : &@ports.WorktreeRepository,
+  worktree : @domain.WorktreeService,
   opts : DoneOptions
 ) -> &@ports.Runnable {
-  DoneCommand::{ vcs, workspace, worktrees, opts }
+  DoneCommand::{ vcs, workspace, worktrees, worktree, opts }
 }
 
 ///|
@@ -62,10 +64,11 @@ pub fn new_new(
   workspace : &@ports.WorkspaceManager,
   fs : &@ports.FileSystem,
   workspace_dir : String,
+  prompt_template : String,
   opts : NewOptions
 ) -> &@ports.Runnable {
   NewCommand::{
     discovery, worktree, vcs, workspace, fs,
-    workspace_dir, opts,
+    workspace_dir, prompt_template, opts,
   }
 }

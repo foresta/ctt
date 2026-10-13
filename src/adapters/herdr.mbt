@@ -70,15 +70,15 @@ async fn setup_workspace(
 }
 
 ///|
-impl @ports.WorkspaceManager for HerdrWorkspace with open(self, repo_name~, branch~, workdir~, continue_session~, focus~) {
+impl @ports.WorkspaceManager for HerdrWorkspace with open(self, repo_name~, branch~, workdir~, continue_session~, focus~, prompt_file~) {
   let label = @herdr.label(repo_name, branch)
   match find_workspace(label) {
     Ok(Some(workspace_id)) => {
       if !focus {
-        return Ok(())
+        return Ok(Reused)
       }
       return match herdr_exec(@herdr.workspace_focus_args(workspace_id)) {
-        Ok(_) => Ok(())
+        Ok(_) => Ok(Reused)
         Err(e) => Err(e)
       }
     }
@@ -93,13 +93,16 @@ impl @ports.WorkspaceManager for HerdrWorkspace with open(self, repo_name~, bran
       }
     Err(e) => return Err(e)
   }
-  let command = @herdr.select_agent_command(
-    new_command=self.agent_command,
-    resume_command=self.agent_resume_command,
-    continue_session=continue_session,
+  let command = @prompt.expand_prompt(
+    @herdr.select_agent_command(
+      new_command=self.agent_command,
+      resume_command=self.agent_resume_command,
+      continue_session=continue_session,
+    ),
+    prompt_file,
   )
   match setup_workspace(created, workdir, command, focus) {
-    Ok(_) => Ok(())
+    Ok(_) => Ok(Created)
     Err(e) => {
       // Do not leave a half-built workspace behind: a later `open` would only
       // focus it and never start the agent.
@@ -107,6 +110,12 @@ impl @ports.WorkspaceManager for HerdrWorkspace with open(self, repo_name~, bran
       Err(e)
     }
   }
+}
+
+///|
+impl @ports.WorkspaceManager for HerdrWorkspace with supports_prompt(self) {
+  @prompt.accepts_prompt(self.agent_command) ||
+  @prompt.accepts_prompt(self.agent_resume_command)
 }
 
 ///|

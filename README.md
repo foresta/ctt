@@ -66,10 +66,20 @@ ctt status ctt__feat-x
 ctt done ctt__feat-x --yes --delete-branch
 ```
 
+To start a task with context, pass it in one of three ways. Claude receives it as its first prompt (see `prompt_template` below). ctt does not interpret the text or fetch the URL; that is left to the agent.
+
+```bash
+ctt new --repo ctt --branch feat-x --base main --context "Add a --json flag to ctt ls"
+ctt new --repo ctt --branch feat-x --context-file notes.md
+pbpaste | ctt new --repo ctt --branch feat-x --context-file -
+ctt new --repo ctt --branch feat-x --context-url https://example.com/issues/123
+```
+
 | Option | Applies to | Meaning |
 |--------|-----------|---------|
 | `--repo <name\|path>` | `new` | Repository under the workspace, by directory name or absolute path. Ambiguous names must be given as a path |
 | `--branch <branch>` | `new` | Branch to check out. With `--base`, the branch is created from `--base` instead |
+| `--context <text>` / `--context-file <path\|->` / `--context-url <url>` | `new` | Task context for the agent's first prompt; one of the three. When the branch is chosen interactively, the context is asked for as well (empty to skip). `--context-file -` needs `--repo` and `--branch` since stdin is taken by the context |
 | `--no-focus` | `new`, `open` | Create the workspace without switching to it |
 | `--yes` | `done` | Skip the removal confirmation. The branch is kept unless `--delete-branch` is also given |
 | `--delete-branch` | `done` | Delete the local branch with `git branch -d`; an unmerged branch is left in place with a warning |
@@ -85,18 +95,24 @@ ctt done ctt__feat-x --yes --delete-branch
 ```toml
 multiplexer = "herdr"   # "herdr" (default) or "tmux"
 
+[agent]
+prompt_template = "Start working on this task. Read the context first, then plan before editing.\n\n{context}"
+
 [herdr]
-agent_command = "claude"                           # left pane, new worktree
-agent_resume_command = "claude --continue || claude"  # left pane, existing worktree
+agent_command = "claude {prompt}"                           # left pane, new worktree
+agent_resume_command = "claude --continue || claude {prompt}"  # left pane, existing worktree
 ```
 
 | Key | Default | Description |
 |-----|---------|-------------|
 | `multiplexer` | `"herdr"` | Backend used by `new` / `open` / `done` |
-| `herdr.agent_command` | `"claude"` | Shell line run in the agent pane when `new` creates a worktree |
-| `herdr.agent_resume_command` | `"<agent_command> --continue \|\| <agent_command>"` | Shell line run instead when the worktree already exists (`open`, or `new` on an existing worktree). The default resumes the last session and falls back to a fresh one when the resume exits non-zero, which is what `claude --continue` does when there is nothing to resume. Any other non-zero exit of the resumed session also starts a fresh one. The lines are typed into the pane's shell, so the default assumes a POSIX-style `\|\|`; set it explicitly for other shells |
+| `agent.prompt_template` | see above | First prompt when a task starts with context. `{context}` is replaced with the text, file content or URL. A slash command such as `/my-skill {context}` works too |
+| `herdr.agent_command` | `"claude {prompt}"` | Shell line run in the agent pane when `new` creates a worktree. `{prompt}` expands to `"$(cat '<prompt file>')"` when the task has context, otherwise it is removed |
+| `herdr.agent_resume_command` | `"<agent_command without {prompt}> --continue \|\| <agent_command>"` | Shell line run instead when the worktree already exists (`open`, or `new` on an existing worktree). The default resumes the last session and falls back to a fresh one when the resume exits non-zero, which is what `claude --continue` does when there is nothing to resume. Any other non-zero exit of the resumed session also starts a fresh one. The lines are typed into the pane's shell, so the default assumes a POSIX-style `\|\|`; set it explicitly for other shells |
 
 **herdr mode** creates one workspace labelled `<repo>__<branch>` per task with a single tab: the left pane runs `agent_command` (or `agent_resume_command` for an existing worktree) and the right pane is a shell in the worktree. Running `new` or `open` on a task whose workspace is already open only focuses it. `done` closes the workspace before removing the worktree.
+
+The task prompt is stored at `~/.config/ctt/tasks/<repo>__<branch>.md` and removed by `done`. `open` passes it again, but only the fresh-session fallback uses it: a successful `claude --continue` resumes the old conversation as-is. `new` with new context on an existing worktree therefore starts a fresh session instead of resuming. If that workspace is still open, nothing is restarted: the prompt is saved and `new` warns that it was not passed. In tmux mode, or when the agent command has no `{prompt}`, the prompt is saved but not passed, and `new` says so.
 
 **tmux mode** keeps the original behaviour: a tmux window named `<repo>__<branch>` running `nvim . -c ClaudeCode` (`ClaudeCode --continue` on `open`), closed by `done`. If the window already exists it is selected instead of duplicated.
 

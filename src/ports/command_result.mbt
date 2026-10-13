@@ -42,4 +42,9 @@ pub(all) enum CommandResult {
     prompt~ : String,
     on_input~ : async (String) -> CommandResult,
   )
+  /// Ask the user for optional free-text input; an empty line continues with None.
+  OptionalInput(
+    prompt~ : String,
+    on_input~ : async (String?) -> CommandResult,
+  )
 }

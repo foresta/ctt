@@ -71,9 +71,11 @@ fn single_name(scanned : Scanned, command : String) -> Result[String?, String] {
 ///|
 fn parse_new(params : Array[String]) -> @commands.Command {
   let s = match
-    scan(params, value_options=["repo", "branch", "base"], flag_options=[
-      "no-focus",
-    ]) {
+    scan(
+      params,
+      value_options=["repo", "branch", "base", "context", "context-file", "context-url"],
+      flag_options=["no-focus"],
+    ) {
     Ok(s) => s
     Err(e) => return Usage(e)
   }
@@ -85,11 +87,31 @@ fn parse_new(params : Array[String]) -> @commands.Command {
   if s.values.get("base") is Some(_) && s.values.get("branch") is None {
     return Usage("--base requires --branch")
   }
+  let context_sources = ["context", "context-file", "context-url"].filter(fn(k) {
+    s.values.get(k) is Some(_)
+  })
+  if context_sources.length() > 1 {
+    return Usage("pass only one of --context, --context-file, --context-url")
+  }
+  // A URL is handed over as plain text; ctt never fetches it.
+  let context = match s.values.get("context") {
+    Some(c) => Some(c)
+    None => s.values.get("context-url")
+  }
+  let context_file = s.values.get("context-file")
+  if context_file == Some("-") &&
+    (s.values.get("repo") is None || s.values.get("branch") is None) {
+    return Usage(
+      "--context-file - reads stdin, so --repo and --branch are required",
+    )
+  }
   New({
     repo: s.values.get("repo"),
     branch: s.values.get("branch"),
     base: s.values.get("base"),
     focus: !s.flags.contains("no-focus"),
+    context,
+    context_file,
   })
 }
 
