@@ -17,10 +17,17 @@ TAG="v$VERSION"
 
 echo "Bumping to $VERSION ..."
 
-# Update moon.mod.json (keeps module metadata in sync with tag)
-sed -i '' "s/\"version\": \"[^\"]*\"/\"version\": \"$VERSION\"/" src/moon.mod.json
+# Update moon.mod (keeps module metadata in sync with tag)
+sed -i '' "s/^version = \"[^\"]*\"/version = \"$VERSION\"/" src/moon.mod
 
-git add src/moon.mod.json
+# Date the Unreleased section of the changelog, unless the version heading
+# was already written by hand.
+if ! grep -q "^## \[$VERSION\]" CHANGELOG.md; then
+  TODAY="$(date +%Y-%m-%d)"
+  perl -0pi -e "s/^## \\[Unreleased\\]\n/## [Unreleased]\n\n## [$VERSION] - $TODAY\n/m" CHANGELOG.md
+fi
+
+git add src/moon.mod CHANGELOG.md
 git commit -m "chore: release $TAG"
 git tag "$TAG"
 
