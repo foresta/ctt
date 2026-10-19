@@ -23,6 +23,11 @@ pub(open) trait WorkspaceManager {
   async open(Self, repo_name~ : String, branch~ : String, workdir~ : String, continue_session~ : Bool, focus~ : Bool, prompt_file~ : String?) -> Result[OpenOutcome, String]
   /// Whether the agent launched by this backend can receive the task prompt.
   supports_prompt(Self) -> Bool
+  /// Whether the calling process runs inside the workspace named `name`.
+  async is_current(Self, name~ : String) -> Result[Bool, String]
   /// Close the workspace named `name`. Ok(true) when closed, Ok(false) when none existed.
   async close(Self, name~ : String) -> Result[Bool, String]
+  /// Close the workspace named `name` shortly after the calling process has
+  /// exited, for use when the caller itself lives in that workspace.
+  async close_later(Self, name~ : String) -> Result[Bool, String]
 }

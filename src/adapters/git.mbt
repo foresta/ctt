@@ -12,9 +12,17 @@ async fn git_run(args : Array[String], cwd~ : String = "") -> (Int, String) {
 ///|
 /// Resolve the git common directory for a worktree.
 async fn resolve_git_dir(workdir : String) -> Result[String, String] {
+  // Absolute, so later calls can use it as cwd after the worktree is gone.
+  // `--path-format` needs git 2.31; older git falls back to the plain form,
+  // which is already absolute for linked worktrees.
   let (status, output) = git_run(
-    ["-C", workdir, "rev-parse", "--git-common-dir"],
+    ["-C", workdir, "rev-parse", "--path-format=absolute", "--git-common-dir"],
   )
+  let (status, output) = if status == 0 && output != "" {
+    (status, output)
+  } else {
+    git_run(["-C", workdir, "rev-parse", "--git-common-dir"])
+  }
   if status != 0 || output == "" {
     Err("failed to get git common dir")
   } else {
@@ -156,8 +164,10 @@ impl @ports.VCS for GitCli with current_branch(self, workdir~) {
 /// Check whether a branch exists in the repository at `git_dir`.
 impl @ports.VCS for GitCli with branch_exists(self, git_dir~, branch~) {
   let _ = self
+  // cwd=git_dir: the worktree that was the cwd may already be gone.
   let (status, output) = git_run(
     ["--git-dir=" + git_dir, "branch", "--list", branch],
+    cwd=git_dir,
   )
   Ok(status == 0 && output.trim_end().to_owned() != "")
 }
@@ -242,6 +252,7 @@ impl @ports.VCS for GitCli with remove_worktree(self, workdir~) {
   }
   let (status, output) = git_run(
     ["--git-dir=" + git_dir, "worktree", "remove", workdir, "--force"],
+    cwd=git_dir,
   )
   if status != 0 {
     return Err("git worktree remove failed: " + output)
@@ -258,6 +269,7 @@ impl @ports.VCS for GitCli with delete_branch(
   let flag = if force { "-D" } else { "-d" }
   let (status, output) = git_run(
     ["--git-dir=" + git_dir, "branch", flag, branch],
+    cwd=git_dir,
   )
   if status != 0 {
     return Err("branch delete failed: " + output)

@@ -93,6 +93,40 @@ impl @ports.WorkspaceManager for TmuxWorkspace with supports_prompt(self) {
 }
 
 ///|
+/// Whether the current tmux window is the task's window.
+impl @ports.WorkspaceManager for TmuxWorkspace with is_current(self, name~) {
+  let _ = self
+  if !in_tmux() {
+    return Ok(false)
+  }
+  // Ask about ctt's own pane, not the client's active window.
+  let args = match @env.get_env_var("TMUX_PANE") {
+    Some(pane) if pane != "" => ["display-message", "-p", "-t", pane, "#{window_name}"]
+    _ => ["display-message", "-p", "#{window_name}"]
+  }
+  let (status, output) = @proc.exec_cmd("tmux", args)
+  Ok(status == 0 && output.trim_end().to_owned() == name)
+}
+
+///|
+/// Kill the task's window shortly after this process exits.
+impl @ports.WorkspaceManager for TmuxWorkspace with close_later(self, name~) {
+  let _ = self
+  if !in_tmux() || !tmux_list_windows().contains(name) {
+    return Ok(false)
+  }
+  let script = @shell.detached_after(
+    @shell.CLOSE_DELAY_SECONDS,
+    "tmux kill-window -t " + @shell.quote(name),
+  )
+  let (status, _) = @proc.exec_cmd("sh", ["-c", script], cwd="/")
+  if status != 0 {
+    return Err("failed to schedule window close")
+  }
+  Ok(true)
+}
+
+///|
 /// Kill the tmux window named `name` if it exists in the current session.
 impl @ports.WorkspaceManager for TmuxWorkspace with close(self, name~) {
   let _ = self

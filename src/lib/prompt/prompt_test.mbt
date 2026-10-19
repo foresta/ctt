@@ -6,13 +6,6 @@ test "render_prompt fills every {context}" {
 }
 
 ///|
-test "shell_quote escapes single quotes" {
-  assert_eq(@prompt.shell_quote("plain"), "'plain'")
-  assert_eq(@prompt.shell_quote("it's"), "'it'\\''s'")
-  assert_eq(@prompt.shell_quote("a b\nc"), "'a b\nc'")
-}
-
-///|
 test "expand_prompt with a file substitutes a cat subshell" {
   assert_eq(
     @prompt.expand_prompt("claude {prompt}", Some("/h/.config/ctt/tasks/r__b.md")),

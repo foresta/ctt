@@ -11,13 +11,15 @@ pub(all) struct HerdrWorkspace {
 ///|
 /// Run `herdr <args>` and return its stdout, or an error built from stderr.
 /// A missing binary or unreachable server is reported as Err, never raised.
+/// herdr never needs the inherited cwd (paths are passed explicitly), and the
+/// cwd may already have been deleted by `done`, so every call runs from `/`.
 async fn herdr_exec(args : Array[String]) -> Result[String, String] {
   let what = if args.length() >= 2 {
     args[0] + " " + args[1]
   } else {
     args.join(" ")
   }
-  let (status, out, err) = @proc.exec_cmd_split("herdr", args) catch {
+  let (status, out, err) = @proc.exec_cmd_split("herdr", args, cwd="/") catch {
     e => return Err("herdr \{what} failed: \{e} (is herdr installed and running?)")
   }
   if status != 0 {
@@ -116,6 +118,43 @@ impl @ports.WorkspaceManager for HerdrWorkspace with open(self, repo_name~, bran
 impl @ports.WorkspaceManager for HerdrWorkspace with supports_prompt(self) {
   @prompt.accepts_prompt(self.agent_command) ||
   @prompt.accepts_prompt(self.agent_resume_command)
+}
+
+///|
+/// The pane ctt runs in carries HERDR_WORKSPACE_ID; compare it with the
+/// workspace that owns `name`.
+impl @ports.WorkspaceManager for HerdrWorkspace with is_current(self, name~) {
+  let _ = self
+  let current = match @env.get_env_var("HERDR_WORKSPACE_ID") {
+    Some(id) if id != "" => id
+    _ => return Ok(false)
+  }
+  match find_workspace(name) {
+    Ok(Some(id)) => Ok(id == current)
+    Ok(None) => Ok(false)
+    Err(e) => Err(e)
+  }
+}
+
+///|
+impl @ports.WorkspaceManager for HerdrWorkspace with close_later(self, name~) {
+  let _ = self
+  let workspace_id = match find_workspace(name) {
+    Ok(Some(id)) => id
+    Ok(None) => return Ok(false)
+    Err(e) => return Err(e)
+  }
+  let script = @shell.detached_after(
+    @shell.CLOSE_DELAY_SECONDS,
+    "herdr workspace close " + @shell.quote(workspace_id),
+  )
+  let (status, _, err) = @proc.exec_cmd_split("sh", ["-c", script], cwd="/") catch {
+    e => return Err("failed to schedule workspace close: \{e}")
+  }
+  if status != 0 {
+    return Err("failed to schedule workspace close: " + err.trim().to_owned())
+  }
+  Ok(true)
 }
 
 ///|
