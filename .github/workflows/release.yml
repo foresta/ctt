@@ -43,7 +43,7 @@ jobs:
           ARCHIVE="ctt-${GITHUB_REF_NAME}-${{ matrix.target }}.tar.gz"
           cp src/_build/native/release/build/cmd/main/main.exe ctt
           tar czf "$ARCHIVE" ctt .worktree-link-ignore config.toml LICENSE README.md
-          sha256sum "$ARCHIVE" > "${ARCHIVE}.sha256"
+          shasum -a 256 "$ARCHIVE" > "${ARCHIVE}.sha256"
           echo "ARCHIVE=$ARCHIVE" >> $GITHUB_ENV
 
       - name: Upload artifact
