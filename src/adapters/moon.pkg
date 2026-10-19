@@ -2,6 +2,7 @@ import {
   "foresta/ctt/config",
   "foresta/ctt/lib/herdr",
   "foresta/ctt/lib/prompt",
+  "foresta/ctt/lib/shell",
   "foresta/ctt/ports",
   "foresta/ctt/lib/process" @proc,
   "moonbitlang/async/process",

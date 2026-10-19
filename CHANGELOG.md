@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Reopening a worktree whose Claude session was never written falls back to a fresh session: the resume command defaults to `<agent_command> --continue || <agent_command>`
 
 ### Fixed
+- `done` run from inside the task's workspace closed that workspace first, which killed `ctt` itself and left the worktree and branch behind. The workspace is now closed last, and from the inside only after `ctt` has exited
 - `done` never deleted the branch: it resolved the git directory from the already removed worktree
 
 ### Changed

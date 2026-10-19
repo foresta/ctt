@@ -105,6 +105,11 @@ checkout_and_open / create_branch_and_open
   失敗なら理由を添えて警告し残す。`yes` のみなら残す。どちらも無ければ従来どおり対話
 - `status`: `name` があれば 1 件の Table
 
+`done` は workspace を最後に閉じる。ctt 自身が対象の workspace の中で動いているとき
+（`WorkspaceManager::is_current`）は、閉じると自分のプロセスごと消えるので、`close_later` で ctt の終了後に
+閉じるよう予約する（`nohup sh -c 'sleep 2; herdr workspace close <id>' &`）。worktree 削除後の git 操作は
+消えたディレクトリを cwd にしないよう git dir を cwd にして実行する。
+
 ブランチ操作（存在確認・削除）は worktree を消す前に `VCS::resolve_git_dir` で得た git dir に対して行う。
 worktree 削除後に workdir から解決しようとして失敗していた既存の不具合の修正を兼ねる。
 

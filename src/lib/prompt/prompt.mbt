@@ -17,12 +17,6 @@ pub fn render_prompt(template : String, context : String) -> String {
 }
 
 ///|
-/// Quote a string for a POSIX shell with single quotes.
-pub fn shell_quote(s : String) -> String {
-  "'" + s.replace_all(old="'", new="'\\''") + "'"
-}
-
-///|
 /// Expand `{prompt}` in an agent command. With a prompt file it becomes
 /// `"$(cat '<path>')"`, so the pane line stays short and the prompt may
 /// contain newlines or quotes. Without one the placeholder is removed and the
@@ -35,7 +29,7 @@ pub fn expand_prompt(command : String, prompt_file : String?) -> String {
     Some(path) =>
       command.replace_all(
         old=PROMPT_PLACEHOLDER,
-        new="\"$(cat " + shell_quote(path) + ")\"",
+        new="\"$(cat " + @shell.quote(path) + ")\"",
       )
     None =>
       // Drop the placeholder with one adjacent space so the rest of the

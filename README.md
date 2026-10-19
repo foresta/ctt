@@ -84,7 +84,7 @@ ctt new --repo ctt --branch feat-x --context-url https://example.com/issues/123
 | `--yes` | `done` | Skip the removal confirmation. The branch is kept unless `--delete-branch` is also given |
 | `--delete-branch` | `done` | Delete the local branch with `git branch -d`; an unmerged branch is left in place with a warning |
 
-`new` with `--branch` reuses an existing worktree without asking (after checking it is on that branch), so it is safe to run repeatedly. `new` and `open` print `Worktree: <path>` as their last line. The exit status is 1 on any error, unknown command or option, or cancelled prompt. In tmux mode, `--no-focus` requires running inside tmux.
+`done` can be run from inside the task's own workspace (for example by the agent working there): the worktree and branch are cleaned up first, and the workspace closes a couple of seconds after `ctt` has exited. `new` with `--branch` reuses an existing worktree without asking (after checking it is on that branch), so it is safe to run repeatedly. `new` and `open` print `Worktree: <path>` as their last line. The exit status is 1 on any error, unknown command or option, or cancelled prompt. In tmux mode, `--no-focus` requires running inside tmux.
 
 ## Configuration
 
