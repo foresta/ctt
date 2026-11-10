@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Task titles: `ctt new --title "<a few words>"` and `ctt title <repo>__<branch> "<text>"` show a short description before the task name in the herdr workspace label and in `ctt ls` / `ctt status`. The title is stored under `~/.config/ctt/tasks/` and applied again by `open`
+
 ### Changed
 - CI and releases run on `macos-15`; the `macos-14` image was retired
 

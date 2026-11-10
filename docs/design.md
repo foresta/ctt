@@ -158,3 +158,68 @@ ctt は特定のトラッカーやサービスを知らず、渡されたもの�
 - `WorkspaceManager::supports_prompt` が false（tmux、または `{prompt}` の無いコマンド）のときは保存だけして警告を出す
 - 対話でコンテキストを聞くのは、ブランチをメニューで選んだときだけ。`--branch` 指定時は聞かない（スクリプトからの利用でブロックしない）
 - tmux モード（nvim の ClaudeCode）は初期プロンプトを受け取れないため `prompt_file` を無視する
+
+## タスクのタイトル
+
+ブランチ名が Issue ID だけだと、workspace のラベルや `ctt ls` を見ても何の作業か分からない。
+短い言葉（数単語の英語）をタイトルとして付け、ラベルの先頭に出す。言葉を決めるのは人かエージェントで、
+ctt は受け取った文字列を保存して表示するだけ。要約や Issue トラッカーの参照は ctt に持ち込まない。
+
+### インターフェース
+
+```
+ctt new --title "<text>" ...          # 作成時に付ける
+ctt title <repo>__<branch> "<text>"   # 後から付ける・付け替える（workspace の中からでも可）
+```
+
+- `--title` は空や改行入りをエラーにする。前後の空白は落とす（`lib/title.normalize`）
+- 引数なしの対話では、コンテキストの次に `OptionalInput`（空で省略）で聞く。`--branch` 指定時は聞かない
+- `title` は名前とタイトルの 2 つの positional を必須にする。1 つだけでは名前かタイトルか決められないため
+
+### 保存
+
+`<config_dir>/tasks/<name>.title` にプロンプト（`<name>.md`）と並べて置く。herdr にしか無い状態だと
+workspace を閉じて `ctt open` し直した時点で消えるため、ctt 側に正を持つ。
+
+- `new --title`: 保存して開く。既存 worktree を開き直すとき（`--title` 無し）は保存済みを使い、
+  新規 worktree をタイトル無しで作るときは同名の古いファイルを消す（プロンプトと同じ扱い）
+- `title`: 保存して、workspace が開いていれば `herdr workspace rename` で付け替える
+- `done`: プロンプトと一緒に削除する
+
+### ラベル
+
+`lib/herdr.workspace_label(name, title~)` が `<title> - <name>` を作る（タイトル無しなら `<name>`）。
+タイトルを先頭に置くのは、タブ幅で切れたときに長いリポジトリ名より先に意味のある語が見えるようにするため。
+末尾が `<name>` で直前が空白なので、既存の `label_matches` による検索（`open` / `done` / `is_current`）に
+手を入れずに済む。手で付け替えた場合も同じ規則の範囲なら壊れない。
+
+### 部品
+
+```moonbit
+// ports/workspace.mbt
+pub(all) enum TitleOutcome { Applied; NotFound; Unavailable(String) }
+trait WorkspaceManager {
+  async open(Self, ..., title~ : String?) -> Result[OpenOutcome, String]   // ラベルに反映
+  async set_title(Self, name~ : String, title~ : String) -> Result[TitleOutcome, String]
+}
+
+// lib/title/title.mbt
+pub fn normalize(text) -> Result[String, String]
+
+// domain/worktree.mbt
+pub fn title_path(config_dir, name) -> String
+WorktreeService::save_title / existing_title (-> String?) / remove_title
+
+// commands
+pub(all) struct NewOptions   { ...; title : String? }
+pub(all) struct TitleOptions { name : String; title : String }
+Command::Title(TitleOptions)
+```
+
+- herdr adapter: `open` はラベルにタイトルを含めて作る。`set_title` は `find_workspace` で id を引き、
+  `workspace rename <id> <label>` を呼ぶ。無ければ `NotFound`
+- `new` で workspace が既に開いていて（`Reused`）`--title` が付いていたら `set_title` で付け替える
+- tmux adapter: window 名は検索に使うので `<name>` のまま。`set_title` は `Unavailable` を返し、
+  `title` は「保存だけした」と伝える
+- `ls` はタイトルがあるタスクが 1 つでもあれば `<name>  <title>` の表にし、無ければ従来どおり名前だけ。
+  `status` の表には `TITLE` 列を足す

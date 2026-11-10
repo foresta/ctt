@@ -22,6 +22,30 @@ test "new: interactive when no options" {
   assert_eq(o.focus, true)
   assert_eq(o.context, None)
   assert_eq(o.context_file, None)
+  assert_eq(o.title, None)
+}
+
+///|
+test "new: title is trimmed and must be one non-empty line" {
+  guard cmd(["new", "--title", " fix login redirect "]) is New(o) else { fail("expected New") }
+  assert_eq(o.title, Some("fix login redirect"))
+  guard cmd(["new", "--title", "  "]) is Usage(m) else { fail("expected Usage") }
+  assert_true(m.contains("empty"))
+  guard cmd(["new", "--title", "a\nb"]) is Usage(m) else { fail("expected Usage") }
+  assert_true(m.contains("single line"))
+}
+
+///|
+test "title: name and text are both required" {
+  guard cmd(["title", "r__b", "fix login redirect"]) is Title(o) else { fail("expected Title") }
+  assert_eq(o.name, "r__b")
+  assert_eq(o.title, "fix login redirect")
+  guard cmd(["title", "r__b"]) is Usage(_) else { fail("expected Usage") }
+  guard cmd(["title", "r__b", "a", "b"]) is Usage(_) else { fail("expected Usage") }
+  guard cmd(["title", "r__b", ""]) is Usage(_) else { fail("expected Usage") }
+  guard cmd(["title", "r__b", "x", "--no-focus"]) is Usage(_) else { fail("expected Usage") }
+  guard cmd(["title", "--", "r__b", "--dashed title"]) is Title(o) else { fail("expected Title") }
+  assert_eq(o.title, "--dashed title")
 }
 
 ///|

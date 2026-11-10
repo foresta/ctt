@@ -72,9 +72,10 @@ async fn setup_workspace(
 }
 
 ///|
-impl @ports.WorkspaceManager for HerdrWorkspace with open(self, repo_name~, branch~, workdir~, continue_session~, focus~, prompt_file~) {
-  let label = @herdr.label(repo_name, branch)
-  match find_workspace(label) {
+impl @ports.WorkspaceManager for HerdrWorkspace with open(self, repo_name~, branch~, workdir~, continue_session~, focus~, prompt_file~, title~) {
+  let name = @herdr.task_name(repo_name, branch)
+  let label = @herdr.workspace_label(name, title~)
+  match find_workspace(name) {
     Ok(Some(workspace_id)) => {
       if !focus {
         return Ok(Reused)
@@ -111,6 +112,21 @@ impl @ports.WorkspaceManager for HerdrWorkspace with open(self, repo_name~, bran
       let _ = herdr_exec(@herdr.workspace_close_args(created.workspace_id))
       Err(e)
     }
+  }
+}
+
+///|
+impl @ports.WorkspaceManager for HerdrWorkspace with set_title(self, name~, title~) {
+  let _ = self
+  let workspace_id = match find_workspace(name) {
+    Ok(Some(id)) => id
+    Ok(None) => return Ok(NotFound)
+    Err(e) => return Err(e)
+  }
+  let label = @herdr.workspace_label(name, title=Some(title))
+  match herdr_exec(@herdr.workspace_rename_args(workspace_id, label~)) {
+    Ok(_) => Ok(Applied)
+    Err(e) => Err(e)
   }
 }
 

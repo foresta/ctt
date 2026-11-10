@@ -9,10 +9,13 @@ pub fn dispatch(
     Help => @sub_commands.new_help()
     Version => @sub_commands.new_version()
     Usage(message) => @sub_commands.new_usage_error(message)
-    Ls => @sub_commands.new_ls(svc.worktrees)
+    Ls => @sub_commands.new_ls(svc.worktrees, worktree_service(svc, cfg))
+    Title(opts) =>
+      @sub_commands.new_title(svc.workspace, svc.worktrees, worktree_service(svc, cfg), opts)
     Open(opts) =>
       @sub_commands.new_open(svc.workspace, svc.worktrees, worktree_service(svc, cfg), opts)
-    Status(opts) => @sub_commands.new_status(svc.vcs, svc.worktrees, opts)
+    Status(opts) =>
+      @sub_commands.new_status(svc.vcs, svc.worktrees, worktree_service(svc, cfg), opts)
     Done(opts) =>
       @sub_commands.new_done(
         svc.vcs, svc.workspace, svc.worktrees, worktree_service(svc, cfg), opts,

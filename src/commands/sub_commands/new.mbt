@@ -56,10 +56,13 @@ async fn NewCommand::with_repo(
         Some(base) =>
           self.create_branch_and_open(
             repo_dir, repo_name, branch, base_branch=base, context=self.opts.context,
+            title=self.opts.title,
           )
         None =>
           if branches.contains(branch) {
-            self.checkout_and_open(repo_dir, repo_name, branch, context=self.opts.context)
+            self.checkout_and_open(
+              repo_dir, repo_name, branch, context=self.opts.context, title=self.opts.title,
+            )
           } else {
             @ports.Error(
               "branch '\{branch}' not found in \{repo_name}; pass --base <branch> to create it",
@@ -79,18 +82,18 @@ fn NewCommand::branch_menu(
 ) -> @ports.CommandResult {
   @ports.Menu(prompt="Select action> ", options=[
     ("Checkout this branch", fn() {
-      self.ask_context(async fn(context) {
-        self.checkout_and_open(repo_dir, repo_name, branch, context=context)
+      self.ask_context_and_title(async fn(context, title) {
+        self.checkout_and_open(repo_dir, repo_name, branch, context~, title~)
       })
     }),
     ("Create new branch from this branch", fn() {
       @ports.Input(prompt="New branch name> ", on_input=fn(new_branch) {
-        self.ask_context(fn(context) {
+        self.ask_context_and_title(fn(context, title) {
           @ports.Then(
             first=@ports.Lines(["Creating branch '" + new_branch + "' from '" + branch + "'..."]),
             next=async fn() {
               self.create_branch_and_open(
-                repo_dir, repo_name, new_branch, base_branch=branch, context=context,
+                repo_dir, repo_name, new_branch, base_branch=branch, context~, title~,
               )
             },
           )
@@ -101,17 +104,37 @@ fn NewCommand::branch_menu(
 }
 
 ///|
-/// Ask for the task context interactively unless it was given on the command line.
-fn NewCommand::ask_context(
+/// Ask for the task context and title interactively unless they were given
+/// on the command line.
+fn NewCommand::ask_context_and_title(
   self : NewCommand,
-  k : async (String?) -> @ports.CommandResult
+  k : async (String?, String?) -> @ports.CommandResult
 ) -> @ports.CommandResult {
+  let with_context = fn(context : String?) -> @ports.CommandResult {
+    match self.opts.title {
+      Some(t) => @ports.Then(first=@ports.Empty, next=async fn() { k(context, Some(t)) })
+      None =>
+        @ports.OptionalInput(
+          prompt="Task title (a few words, empty to skip)> ",
+          on_input=async fn(t) {
+            match t {
+              None => k(context, None)
+              Some(t) =>
+                match @title.normalize(t) {
+                  Ok(t) => k(context, Some(t))
+                  Err(e) => @ports.Error(e)
+                }
+            }
+          },
+        )
+    }
+  }
   match self.opts.context {
-    Some(c) => @ports.Then(first=@ports.Empty, next=async fn() { k(Some(c)) })
+    Some(c) => @ports.Then(first=@ports.Empty, next=fn() { with_context(Some(c)) })
     None =>
       @ports.OptionalInput(
         prompt="Task context (text or URL, empty to skip)> ",
-        on_input=async fn(c) { k(c) },
+        on_input=fn(c) { with_context(c) },
       )
   }
 }
@@ -126,7 +149,8 @@ async fn NewCommand::reuse_existing(
   repo_name : String,
   workdir : String,
   branch : String,
-  context : String?
+  context : String?,
+  title : String?
 ) -> @ports.CommandResult {
   if self.opts.branch is Some(_) {
     match self.vcs.current_branch(workdir=workdir) {
@@ -143,7 +167,7 @@ async fn NewCommand::reuse_existing(
     return @ports.Then(
       first=@ports.Lines(["Using existing worktree: " + workdir]),
       next=async fn() {
-        self.link_and_open(repo_dir, repo_name, workdir, branch, continue_session, context)
+        self.link_and_open(repo_dir, repo_name, workdir, branch, continue_session, context, title)
       },
     )
   }
@@ -153,7 +177,7 @@ async fn NewCommand::reuse_existing(
     @ports.Confirm(
       prompt="Use existing worktree? [y/N] ",
       on_yes=async fn() {
-        self.link_and_open(repo_dir, repo_name, workdir, branch, continue_session, context)
+        self.link_and_open(repo_dir, repo_name, workdir, branch, continue_session, context, title)
       },
     ),
   ])
@@ -167,17 +191,18 @@ async fn NewCommand::create_branch_and_open(
   repo_name : String,
   branch : String,
   base_branch~ : String,
-  context~ : String?
+  context~ : String?,
+  title~ : String?
 ) -> @ports.CommandResult {
   let workdir = @domain.worktree_path(self.workspace_dir, repo_name, branch)
   if self.fs.path_exists(path=workdir) {
-    return self.reuse_existing(repo_dir, repo_name, workdir, branch, context)
+    return self.reuse_existing(repo_dir, repo_name, workdir, branch, context, title)
   }
   match self.vcs.create_branch_worktree(
     repo_dir=repo_dir, workdir=workdir, branch=branch,
     base_branch=Some(base_branch),
   ) {
-    Ok(_) => self.link_and_open(repo_dir, repo_name, workdir, branch, false, context)
+    Ok(_) => self.link_and_open(repo_dir, repo_name, workdir, branch, false, context, title)
     Err(e) => @ports.Error(e)
   }
 }
@@ -189,23 +214,25 @@ async fn NewCommand::checkout_and_open(
   repo_dir : String,
   repo_name : String,
   branch : String,
-  context~ : String?
+  context~ : String?,
+  title~ : String?
 ) -> @ports.CommandResult {
   let workdir = @domain.worktree_path(self.workspace_dir, repo_name, branch)
   if self.fs.path_exists(path=workdir) {
-    return self.reuse_existing(repo_dir, repo_name, workdir, branch, context)
+    return self.reuse_existing(repo_dir, repo_name, workdir, branch, context, title)
   }
   match self.vcs.checkout_worktree(
     repo_dir=repo_dir, workdir=workdir, branch=branch,
   ) {
-    Ok(_) => self.link_and_open(repo_dir, repo_name, workdir, branch, false, context)
+    Ok(_) => self.link_and_open(repo_dir, repo_name, workdir, branch, false, context, title)
     Err(e) => @ports.Error(e)
   }
 }
 
 ///|
-/// Link ignored files, save the task prompt and open the workspace. Always
-/// ends with a `Worktree: <path>` line so callers can find the directory.
+/// Link ignored files, save the task prompt and title, and open the
+/// workspace. Always ends with a `Worktree: <path>` line so callers can find
+/// the directory.
 async fn NewCommand::link_and_open(
   self : NewCommand,
   repo_dir : String,
@@ -213,10 +240,29 @@ async fn NewCommand::link_and_open(
   workdir : String,
   branch : String,
   continue_session : Bool,
-  context : String?
+  context : String?,
+  title : String?
 ) -> @ports.CommandResult {
   let lines = self.worktree.link_ignored_files(repo_dir, workdir)
   let name = @domain.worktree_name(repo_name, branch)
+  let given_title = title
+  let title = match title {
+    Some(t) =>
+      match self.worktree.save_title(name, t) {
+        Ok(_) => {
+          lines.push("Title: " + t)
+          Some(t)
+        }
+        Err(e) => return @ports.Sequence([@ports.Lines(lines), @ports.Error(e)])
+      }
+    None =>
+      if continue_session {
+        self.worktree.existing_title(name)
+      } else {
+        let _ = self.worktree.remove_title(name)
+        None
+      }
+  }
   let prompt_file = match context {
     Some(c) =>
       match self.worktree.save_prompt(name, @prompt.render_prompt(self.prompt_template, c)) {
@@ -245,15 +291,27 @@ async fn NewCommand::link_and_open(
   match self.workspace.open(
     repo_name=repo_name, branch=branch, workdir=workdir,
     continue_session=continue_session, focus=self.opts.focus,
-    prompt_file=prompt_file,
+    prompt_file=prompt_file, title~,
   ) {
-    Ok(Reused) if context is Some(_) => {
-      lines.push(
-        "Warning: the workspace was already open, so the task prompt was saved but not passed to the agent",
-      )
+    Ok(Reused) => {
+      if context is Some(_) {
+        lines.push(
+          "Warning: the workspace was already open, so the task prompt was saved but not passed to the agent",
+        )
+      }
+      // The label was fixed when the workspace was created; a title given now
+      // is applied by renaming it.
+      if given_title is Some(t) {
+        match self.workspace.set_title(name~, title=t) {
+          Ok(Applied) | Ok(NotFound) => ()
+          Ok(Unavailable(reason)) =>
+            lines.push("Note: " + reason + ", so only the saved title changed.")
+          Err(e) => lines.push("Warning: failed to rename workspace: " + e)
+        }
+      }
       @ports.Lines(lines)
     }
-    Ok(_) => @ports.Lines(lines)
+    Ok(Created) => @ports.Lines(lines)
     Err(e) => @ports.Sequence([@ports.Lines(lines), @ports.Error(e)])
   }
 }

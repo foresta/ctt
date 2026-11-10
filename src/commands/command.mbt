@@ -6,6 +6,7 @@ pub(all) enum Command {
   Status(@sub_commands.StatusOptions)
   Done(@sub_commands.DoneOptions)
   New(@sub_commands.NewOptions)
+  Title(@sub_commands.TitleOptions)
   Help
   Version
   /// Argument error: the message is reported and the process exits with 1.

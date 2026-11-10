@@ -44,9 +44,10 @@ async fn tmux_run(args : Array[String]) -> Result[Unit, String] {
 /// Open nvim with Claude Code in a new tmux window (or select the task's
 /// window when it already exists). Outside tmux, nvim runs in the current
 /// terminal when focus is requested; `focus=false` is an error there.
-impl @ports.WorkspaceManager for TmuxWorkspace with open(self, repo_name~, branch~, workdir~, continue_session~, focus~, prompt_file~) {
-  // The ClaudeCode nvim plugin cannot take an initial prompt.
-  let _ = (self, prompt_file)
+impl @ports.WorkspaceManager for TmuxWorkspace with open(self, repo_name~, branch~, workdir~, continue_session~, focus~, prompt_file~, title~) {
+  // The ClaudeCode nvim plugin cannot take an initial prompt, and the window
+  // name is what `is_current` / `close` search for, so the title is not shown.
+  let _ = (self, prompt_file, title)
   let tmux_window_name = "\{repo_name}__\{branch}"
   let terminal_title = "Claude: \{repo_name} [\{branch}]"
   let claude_cmd = if continue_session {
@@ -84,6 +85,12 @@ impl @ports.WorkspaceManager for TmuxWorkspace with open(self, repo_name~, branc
 
     Ok(Created)
   }
+}
+
+///|
+impl @ports.WorkspaceManager for TmuxWorkspace with set_title(self, name~, title~) {
+  let _ = (self, name, title)
+  Ok(Unavailable("tmux windows are named after the task"))
 }
 
 ///|

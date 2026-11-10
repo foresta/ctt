@@ -26,6 +26,7 @@ async fn OpenCommand::open_worktree(
     continue_session=true,
     focus=self.opts.focus,
     prompt_file=self.worktree.existing_prompt(wt.name),
+    title=self.worktree.existing_title(wt.name),
   ) {
     Ok(_) => @ports.Lines(["Opened: " + wt.name, "Worktree: " + wt.workdir])
     Err(e) => @ports.Error(e)
