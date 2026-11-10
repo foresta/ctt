@@ -49,6 +49,7 @@ ctt <command>
 - `ctt ls` - List active tasks
 - `ctt open` - Open (or focus) the workspace of an existing task
 - `ctt status` - Show task status (use `--all` for all tasks)
+- `ctt title` - Give a task a short title, shown before its name in the workspace label
 - `ctt done` - Close the workspace, remove the worktree and optionally delete the branch
 - `ctt version` (or `ctt --version`) - Print version
 
@@ -75,16 +76,24 @@ pbpaste | ctt new --repo ctt --branch feat-x --context-file -
 ctt new --repo ctt --branch feat-x --context-url https://example.com/issues/123
 ```
 
+Branch names are often just issue ids, so a task can carry a short title. It is shown before the task name in the workspace label (`fix login redirect - ctt__feat-x`) and in `ctt ls` / `ctt status`. ctt only stores the words you give it; summarising an issue into a title is left to you or the agent.
+
+```bash
+ctt new --repo ctt --branch feat-x --base main --title "fix login redirect"
+ctt title ctt__feat-x "validate checkout"     # add or change it later, also from inside the workspace
+```
+
 | Option | Applies to | Meaning |
 |--------|-----------|---------|
 | `--repo <name\|path>` | `new` | Repository under the workspace, by directory name or absolute path. Ambiguous names must be given as a path |
 | `--branch <branch>` | `new` | Branch to check out. With `--base`, the branch is created from `--base` instead |
 | `--context <text>` / `--context-file <path\|->` / `--context-url <url>` | `new` | Task context for the agent's first prompt; one of the three. When the branch is chosen interactively, the context is asked for as well (empty to skip). `--context-file -` needs `--repo` and `--branch` since stdin is taken by the context |
+| `--title <text>` | `new` | A few words shown before the task name. Asked for (empty to skip) when the branch is chosen interactively |
 | `--no-focus` | `new`, `open` | Create the workspace without switching to it |
 | `--yes` | `done` | Skip the removal confirmation. The branch is kept unless `--delete-branch` is also given |
 | `--delete-branch` | `done` | Delete the local branch with `git branch -d`; an unmerged branch is left in place with a warning |
 
-`done` can be run from inside the task's own workspace (for example by the agent working there): the worktree and branch are cleaned up first, and the workspace closes a couple of seconds after `ctt` has exited. The caller's working directory is deleted in the process, so a shell or tool that re-reads it afterwards may report `getcwd: cannot access parent directories`; the cleanup has already succeeded at that point. You may rename a task's workspace in herdr by adding a prefix, as long as the label still ends with `<repo>__<branch>` and the character before it is not a letter, digit, `_`, `-` or `.` (so `(Validation)ctt__feat-x` and `WIP: ctt__feat-x` are found, `WIP-ctt__feat-x` is not). If more than one workspace matches, `done` stops before removing anything and lists them. `new` with `--branch` reuses an existing worktree without asking (after checking it is on that branch), so it is safe to run repeatedly. `new` and `open` print `Worktree: <path>` as their last line. The exit status is 1 on any error, unknown command or option, or cancelled prompt. In tmux mode, `--no-focus` requires running inside tmux.
+`done` can be run from inside the task's own workspace (for example by the agent working there): the worktree and branch are cleaned up first, and the workspace closes a couple of seconds after `ctt` has exited. The caller's working directory is deleted in the process, so a shell or tool that re-reads it afterwards may report `getcwd: cannot access parent directories`; the cleanup has already succeeded at that point. You may rename a task's workspace in herdr by adding a prefix, as long as the label still ends with `<repo>__<branch>` and the character before it is not a letter, digit, `_`, `-` or `.` (so `(Validation)ctt__feat-x` and `WIP: ctt__feat-x` are found, `WIP-ctt__feat-x` is not). If more than one workspace matches, `done` stops before removing anything and lists them. `ctt title` replaces such a hand-made label with `<title> - <repo>__<branch>`. `new` with `--branch` reuses an existing worktree without asking (after checking it is on that branch), so it is safe to run repeatedly. `new` and `open` print `Worktree: <path>` as their last line. The exit status is 1 on any error, unknown command or option, or cancelled prompt. In tmux mode, `--no-focus` requires running inside tmux.
 
 ## Configuration
 
@@ -113,6 +122,8 @@ agent_resume_command = "claude --continue || claude {prompt}"  # left pane, exis
 **herdr mode** creates one workspace labelled `<repo>__<branch>` per task with a single tab: the left pane runs `agent_command` (or `agent_resume_command` for an existing worktree) and the right pane is a shell in the worktree. Running `new` or `open` on a task whose workspace is already open only focuses it. `done` closes the workspace before removing the worktree.
 
 The task prompt is stored at `~/.config/ctt/tasks/<repo>__<branch>.md` and removed by `done`. `open` passes it again, but only the fresh-session fallback uses it: a successful `claude --continue` resumes the old conversation as-is. `new` with new context on an existing worktree therefore starts a fresh session instead of resuming. If that workspace is still open, nothing is restarted: the prompt is saved and `new` warns that it was not passed. In tmux mode, or when the agent command has no `{prompt}`, the prompt is saved but not passed, and `new` says so.
+
+The task title is stored at `~/.config/ctt/tasks/<repo>__<branch>.title` and removed by `done`. `open` applies it again when it recreates the workspace, and `title` (or `new --title` on an open workspace) renames the workspace in place, replacing any label set by hand. tmux mode keeps the window named after the task and only stores the title.
 
 **tmux mode** keeps the original behaviour: a tmux window named `<repo>__<branch>` running `nvim . -c ClaudeCode` (`ClaudeCode --continue` on `open`), closed by `done`. If the window already exists it is selected instead of duplicated.
 

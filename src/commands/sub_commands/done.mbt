@@ -92,6 +92,11 @@ async fn DoneCommand::remove(
     Ok(false) => ()
     Err(e) => output.push("Warning: " + e)
   }
+  match self.worktree.remove_title(name) {
+    Ok(true) => output.push("Removed task title")
+    Ok(false) => ()
+    Err(e) => output.push("Warning: " + e)
+  }
   let cleanup = match self.branch_cleanup(git_dir, wt, output) {
     Some(interactive) => interactive
     None => {

@@ -1,8 +1,25 @@
 ///|
 // --- label / command ---
 
-test "label joins repo and branch with __" {
-  assert_eq(@herdr.label("ctt", "feat/x"), "ctt__feat/x")
+test "task_name joins repo and branch with __" {
+  assert_eq(@herdr.task_name("ctt", "feat/x"), "ctt__feat/x")
+}
+
+///|
+test "workspace_label puts the title before the task name" {
+  assert_eq(@herdr.workspace_label("ctt__feat/x", title=None), "ctt__feat/x")
+  assert_eq(
+    @herdr.workspace_label("ctt__feat/x", title=Some("fix login redirect")),
+    "fix login redirect - ctt__feat/x",
+  )
+  assert_true(@herdr.label_matches(@herdr.workspace_label("ctt__feat/x", title=Some("t")), "ctt__feat/x"))
+}
+
+///|
+test "workspace_rename_args" {
+  assert_eq(@herdr.workspace_rename_args("w1", label="t - r__b"), [
+    "workspace", "rename", "w1", "t - r__b",
+  ])
 }
 
 ///|
@@ -223,4 +240,16 @@ test "parse_error_message: raw text fallback and stdout fallback" {
 ///|
 test "parse_error_message: both empty" {
   assert_eq(@herdr.parse_error_message("", ""), "unknown error")
+}
+
+///|
+test "find_workspace_id: titled labels resolve by the trailing task name only" {
+  let entries = [
+    @herdr.WorkspaceEntry::{ workspace_id: "w1", label: "ctt__b - ctt__a" },
+    @herdr.WorkspaceEntry::{ workspace_id: "w2", label: "fix a - b thing - ctt__b" },
+    @herdr.WorkspaceEntry::{ workspace_id: "w3", label: "ends with ctt__c - ctt__c" },
+  ]
+  assert_eq(@herdr.find_workspace_id(entries, label="ctt__a"), Ok(Some("w1")))
+  assert_eq(@herdr.find_workspace_id(entries, label="ctt__b"), Ok(Some("w2")))
+  assert_eq(@herdr.find_workspace_id(entries, label="ctt__c"), Ok(Some("w3")))
 }

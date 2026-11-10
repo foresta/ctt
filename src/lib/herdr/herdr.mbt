@@ -32,9 +32,21 @@ pub extend WorkspaceEntry with @debug.Debug::{to_repr}
 // --- labels and commands ---
 
 ///|
-/// Workspace label for a task: `<repo_name>__<branch>` (same shape as the worktree dir name).
-pub fn label(repo_name : String, branch : String) -> String {
+/// Task name shared with the worktree directory: `<repo_name>__<branch>`.
+pub fn task_name(repo_name : String, branch : String) -> String {
   "\{repo_name}__\{branch}"
+}
+
+///|
+/// Workspace label for a task: the task name `<repo>__<branch>`, preceded by
+/// the title when there is one. The title goes first so it survives a
+/// truncated tab, and the separating space keeps the name findable by
+/// `label_matches`.
+pub fn workspace_label(name : String, title~ : String?) -> String {
+  match title {
+    Some(t) => t + " - " + name
+    None => name
+  }
 }
 
 ///|
@@ -71,6 +83,11 @@ pub fn workspace_focus_args(workspace_id : String) -> Array[String] {
 ///|
 pub fn workspace_close_args(workspace_id : String) -> Array[String] {
   ["workspace", "close", workspace_id]
+}
+
+///|
+pub fn workspace_rename_args(workspace_id : String, label~ : String) -> Array[String] {
+  ["workspace", "rename", workspace_id, label]
 }
 
 ///|

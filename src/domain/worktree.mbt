@@ -20,11 +20,23 @@ pub fn worktree_name(repo_name : String, branch : String) -> String {
 }
 
 ///|
-/// Path of the saved task prompt: `<config_dir>/tasks/<name>.md`.
+/// Path of a per-task file: `<config_dir>/tasks/<name><ext>`.
 /// A `/` in the branch name is encoded as `%2F` so the file stays in one
 /// directory without colliding with a branch that really contains `-`.
+fn task_file(config_dir : String, name : String, ext : String) -> String {
+  config_dir + "/tasks/" + name.replace_all(old="/", new="%2F") + ext
+}
+
+///|
+/// Path of the saved task prompt: `<config_dir>/tasks/<name>.md`.
 pub fn prompt_path(config_dir : String, name : String) -> String {
-  config_dir + "/tasks/" + name.replace_all(old="/", new="%2F") + ".md"
+  task_file(config_dir, name, ".md")
+}
+
+///|
+/// Path of the saved task title: `<config_dir>/tasks/<name>.title`.
+pub fn title_path(config_dir : String, name : String) -> String {
+  task_file(config_dir, name, ".title")
 }
 
 ///|
@@ -160,6 +172,61 @@ pub fn WorktreeService::remove_prompt(
         Ok(_) => Ok(true)
         Err(e) => Err("failed to remove " + path + ": " + e)
       }
+  }
+}
+
+///|
+/// Save the task title for `name`.
+pub fn WorktreeService::save_title(
+  self : WorktreeService,
+  name : String,
+  title : String
+) -> Result[Unit, String] {
+  match self.ensure_dir(self.config_dir + "/tasks") {
+    Ok(_) => ()
+    Err(e) => return Err(e)
+  }
+  let path = title_path(self.config_dir, name)
+  match self.fs.write_file(path=path, content=title) {
+    Ok(_) => Ok(())
+    Err(e) => Err("failed to write " + path + ": " + e)
+  }
+}
+
+///|
+/// The saved task title for `name`, if there is one. An unreadable or blank
+/// file counts as no title.
+pub fn WorktreeService::existing_title(
+  self : WorktreeService,
+  name : String
+) -> String? {
+  let path = title_path(self.config_dir, name)
+  if !self.fs.path_exists(path=path) {
+    return None
+  }
+  match self.fs.read_file_to_string(path=path) {
+    Ok(text) =>
+      match @title.normalize(text) {
+        Ok(t) => Some(t)
+        Err(_) => None
+      }
+    Err(_) => None
+  }
+}
+
+///|
+/// Remove the saved task title for `name`. Ok(true) when a file was removed.
+pub fn WorktreeService::remove_title(
+  self : WorktreeService,
+  name : String
+) -> Result[Bool, String] {
+  let path = title_path(self.config_dir, name)
+  if !self.fs.path_exists(path=path) {
+    return Ok(false)
+  }
+  match self.fs.remove_file(path=path) {
+    Ok(_) => Ok(true)
+    Err(e) => Err("failed to remove " + path + ": " + e)
   }
 }
 

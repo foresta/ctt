@@ -18,8 +18,22 @@ pub fn new_usage_error(message : String) -> &@ports.Runnable {
 
 ///|
 /// Create an LsCommand as a Runnable.
-pub fn new_ls(worktrees : &@ports.WorktreeRepository) -> &@ports.Runnable {
-  LsCommand::{ worktrees, }
+pub fn new_ls(
+  worktrees : &@ports.WorktreeRepository,
+  worktree : @domain.WorktreeService
+) -> &@ports.Runnable {
+  LsCommand::{ worktrees, worktree }
+}
+
+///|
+/// Create a TitleCommand as a Runnable.
+pub fn new_title(
+  workspace : &@ports.WorkspaceManager,
+  worktrees : &@ports.WorktreeRepository,
+  worktree : @domain.WorktreeService,
+  opts : TitleOptions
+) -> &@ports.Runnable {
+  TitleCommand::{ workspace, worktrees, worktree, opts }
 }
 
 ///|
@@ -38,9 +52,10 @@ pub fn new_open(
 pub fn new_status(
   vcs : &@ports.VCS,
   worktrees : &@ports.WorktreeRepository,
+  worktree : @domain.WorktreeService,
   opts : StatusOptions
 ) -> &@ports.Runnable {
-  StatusCommand::{ vcs, worktrees, opts }
+  StatusCommand::{ vcs, worktrees, worktree, opts }
 }
 
 ///|

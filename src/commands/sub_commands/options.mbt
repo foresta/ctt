@@ -9,6 +9,15 @@ pub(all) struct NewOptions {
   context : String?
   /// File to read the context from (`-` for stdin); resolved into `context` before dispatch.
   context_file : String?
+  /// A few words shown before the task name in the workspace label.
+  title : String?
+}
+
+///|
+/// Options for `ctt title`.
+pub(all) struct TitleOptions {
+  name : String
+  title : String
 }
 
 ///|

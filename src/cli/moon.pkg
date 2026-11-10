@@ -1,3 +1,4 @@
 import {
   "foresta/ctt/commands",
+  "foresta/ctt/lib/title" @title,
 }

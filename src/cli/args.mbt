@@ -21,6 +21,13 @@ fn scan(
   let mut i = 0
   while i < params.length() {
     let arg = params[i]
+    // `--` ends option parsing so a title may start with a dash.
+    if arg == "--" {
+      for j = i + 1; j < params.length(); j = j + 1 {
+        positionals.push(params[j])
+      }
+      break
+    }
     if arg.has_prefix("--") && arg.length() > 2 {
       let body = arg[2:].to_owned()
       let (key, inline_value) = match body.find("=") {
@@ -73,7 +80,9 @@ fn parse_new(params : Array[String]) -> @commands.Command {
   let s = match
     scan(
       params,
-      value_options=["repo", "branch", "base", "context", "context-file", "context-url"],
+      value_options=[
+        "repo", "branch", "base", "context", "context-file", "context-url", "title",
+      ],
       flag_options=["no-focus"],
     ) {
     Ok(s) => s
@@ -105,6 +114,14 @@ fn parse_new(params : Array[String]) -> @commands.Command {
       "--context-file - reads stdin, so --repo and --branch are required",
     )
   }
+  let title = match s.values.get("title") {
+    None => None
+    Some(t) =>
+      match @title.normalize(t) {
+        Ok(t) => Some(t)
+        Err(e) => return Usage("--title: " + e)
+      }
+  }
   New({
     repo: s.values.get("repo"),
     branch: s.values.get("branch"),
@@ -112,7 +129,23 @@ fn parse_new(params : Array[String]) -> @commands.Command {
     focus: !s.flags.contains("no-focus"),
     context,
     context_file,
+    title,
   })
+}
+
+///|
+fn parse_title(params : Array[String]) -> @commands.Command {
+  let s = match scan(params, value_options=[], flag_options=[]) {
+    Ok(s) => s
+    Err(e) => return Usage(e)
+  }
+  guard s.positionals is [name, text] else {
+    return Usage("title takes a worktree name and the title: ctt title <repo>__<branch> <text>")
+  }
+  match @title.normalize(text) {
+    Ok(title) => Title({ name, title })
+    Err(e) => Usage("title: " + e)
+  }
 }
 
 ///|
@@ -179,6 +212,7 @@ pub fn parse(args : Array[String]) -> @commands.CommandInput {
     "status" => parse_status(params)
     "done" => parse_done(params)
     "new" => parse_new(params)
+    "title" => parse_title(params)
     "version" => Version
     "help" | "--help" | "-h" => Help
     other => Usage("unknown command '\{other}' (run `ctt help`)")
