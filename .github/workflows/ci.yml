@@ -10,7 +10,7 @@ jobs:
   check:
     name: Check
     # MoonBit's installer only supports arm64 on macOS, so there is no Intel job.
-    runs-on: macos-14
+    runs-on: macos-15
 
     steps:
       - uses: actions/checkout@v4

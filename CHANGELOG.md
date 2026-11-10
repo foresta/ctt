@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- CI and releases run on `macos-15`; the `macos-14` image was retired
+
 ### Fixed
 - herdr workspaces renamed with a prefix (for example `(Validation)repo__branch`) were not found, so `done` silently left them open and `open` / `new` created duplicates. Workspaces are now matched by the `<repo>__<branch>` suffix behind a non-name character (see README), `done` says when there is no open workspace to close, and it stops before removing anything when several workspaces match
 
