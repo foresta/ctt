@@ -74,14 +74,14 @@ async fn DoneCommand::remove(
   // When ctt itself runs inside the task's workspace, closing it first would
   // kill this process before the worktree is removed. The workspace is closed
   // last, and from the inside only after ctt has exited.
-  // When unsure, prefer the deferred close: harmless from the outside, and
-  // the only safe choice from the inside.
+  // Decide this before anything is deleted: an ambiguous or unreachable
+  // workspace lookup is reported and nothing is removed.
   let inside = match self.workspace.is_current(name=name) {
     Ok(b) => b
-    Err(e) => {
-      output.push("Warning: could not tell whether ctt runs inside the workspace: " + e)
-      true
-    }
+    Err(e) =>
+      return @ports.Error(
+        "cannot identify the workspace for " + name + ": " + e + " (nothing was removed)",
+      )
   }
   match self.vcs.remove_worktree(workdir=wt.workdir) {
     Ok(_) => ()
@@ -112,21 +112,23 @@ async fn DoneCommand::close_workspace(
   name : String,
   inside : Bool
 ) -> @ports.CommandResult {
-  if inside {
-    match self.workspace.close_later(name=name) {
-      Ok(true) =>
-        @ports.Lines([
-          "This workspace closes in a moment (ctt is running inside it).",
-        ])
-      Ok(false) => @ports.Empty
-      Err(e) => @ports.Lines(["Warning: " + e])
-    }
+  let (result, closed_line) = if inside {
+    (
+      self.workspace.close_later(name=name),
+      "This workspace closes in a moment (ctt is running inside it).",
+    )
   } else {
-    match self.workspace.close(name=name) {
-      Ok(true) => @ports.Lines(["Closed workspace: " + name])
-      Ok(false) => @ports.Empty
-      Err(e) => @ports.Lines(["Warning: failed to close workspace: " + e])
-    }
+    (self.workspace.close(name=name), "Closed workspace: " + name)
+  }
+  match result {
+    Ok(Closed) => @ports.Lines([closed_line])
+    Ok(NotFound) =>
+      @ports.Lines(["No open workspace found for " + name + "; nothing to close."])
+    Ok(Unavailable(reason)) =>
+      @ports.Lines([
+        "Note: " + reason + ", so no workspace was closed; close " + name + " yourself if it is open.",
+      ])
+    Err(e) => @ports.Lines(["Warning: failed to close workspace: " + e])
   }
 }
 

@@ -36,7 +36,7 @@ async fn find_workspace(label : String) -> Result[String?, String] {
     Err(e) => return Err(e)
   }
   match @herdr.parse_workspace_list(out) {
-    Ok(entries) => Ok(@herdr.find_workspace_id(entries, label=label))
+    Ok(entries) => @herdr.find_workspace_id(entries, label=label)
     Err(e) => Err(e)
   }
 }
@@ -141,7 +141,7 @@ impl @ports.WorkspaceManager for HerdrWorkspace with close_later(self, name~) {
   let _ = self
   let workspace_id = match find_workspace(name) {
     Ok(Some(id)) => id
-    Ok(None) => return Ok(false)
+    Ok(None) => return Ok(NotFound)
     Err(e) => return Err(e)
   }
   let script = @shell.detached_after(
@@ -154,7 +154,7 @@ impl @ports.WorkspaceManager for HerdrWorkspace with close_later(self, name~) {
   if status != 0 {
     return Err("failed to schedule workspace close: " + err.trim().to_owned())
   }
-  Ok(true)
+  Ok(Closed)
 }
 
 ///|
@@ -162,11 +162,11 @@ impl @ports.WorkspaceManager for HerdrWorkspace with close(self, name~) {
   let _ = self
   let workspace_id = match find_workspace(name) {
     Ok(Some(id)) => id
-    Ok(None) => return Ok(false)
+    Ok(None) => return Ok(NotFound)
     Err(e) => return Err(e)
   }
   match herdr_exec(@herdr.workspace_close_args(workspace_id)) {
-    Ok(_) => Ok(true)
+    Ok(_) => Ok(Closed)
     Err(e) => Err(e)
   }
 }

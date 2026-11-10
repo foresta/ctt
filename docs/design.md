@@ -105,6 +105,12 @@ checkout_and_open / create_branch_and_open
   失敗なら理由を添えて警告し残す。`yes` のみなら残す。どちらも無ければ従来どおり対話
 - `status`: `name` があれば 1 件の Table
 
+workspace は `herdr workspace list` のラベルで探す。「ラベルが `<repo>__<branch>` そのもの、または末尾が
+それと一致し、その直前の文字が英数字・`_`・`-`・`.` でない」ものを 1 件だけ採る（`lib/herdr.label_matches`）。ユーザーが `(Validation)repo__branch` のように接頭辞を付けても見つかり、
+`repo__aim-209` と `repo__aim-2098`、別リポジトリの同名ブランチは区別される。完全一致も接頭辞付きも同列に数え、複数一致はエラー（古い完全一致検索が作った複製と、改名した元の
+workspace が並ぶ場合に、誤って複製だけを閉じない）。`done` は worktree を消す前に `is_current` でこの判定を
+行い、エラーなら何も消さずに中止する。
+
 `done` は workspace を最後に閉じる。ctt 自身が対象の workspace の中で動いているとき
 （`WorkspaceManager::is_current`）は、閉じると自分のプロセスごと消えるので、`close_later` で ctt の終了後に
 閉じるよう予約する（`nohup sh -c 'sleep 2; herdr workspace close <id>' &`）。worktree 削除後の git 操作は

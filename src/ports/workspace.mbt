@@ -14,6 +14,24 @@ pub extend OpenOutcome with Eq::{ equal, not_equal }
 pub extend OpenOutcome with @debug.Debug::{ to_repr }
 
 ///|
+/// What `WorkspaceManager::close` / `close_later` did.
+pub(all) enum CloseOutcome {
+  /// The workspace was closed (or scheduled to close).
+  Closed
+  /// No open workspace exists for the task.
+  NotFound
+  /// The backend could not look, for example tmux mode outside tmux; the
+  /// reason is for the user.
+  Unavailable(String)
+} derive(Eq, Debug)
+
+///|
+pub extend CloseOutcome with Eq::{ equal, not_equal }
+
+///|
+pub extend CloseOutcome with @debug.Debug::{ to_repr }
+
+///|
 /// Port for the terminal workspace a task runs in (a tmux window, a herdr workspace, ...).
 /// Workspaces are identified by the task name `<repo_name>__<branch>`.
 pub(open) trait WorkspaceManager {
@@ -25,9 +43,9 @@ pub(open) trait WorkspaceManager {
   supports_prompt(Self) -> Bool
   /// Whether the calling process runs inside the workspace named `name`.
   async is_current(Self, name~ : String) -> Result[Bool, String]
-  /// Close the workspace named `name`. Ok(true) when closed, Ok(false) when none existed.
-  async close(Self, name~ : String) -> Result[Bool, String]
+  /// Close the workspace named `name`.
+  async close(Self, name~ : String) -> Result[CloseOutcome, String]
   /// Close the workspace named `name` shortly after the calling process has
   /// exited, for use when the caller itself lives in that workspace.
-  async close_later(Self, name~ : String) -> Result[Bool, String]
+  async close_later(Self, name~ : String) -> Result[CloseOutcome, String]
 }
