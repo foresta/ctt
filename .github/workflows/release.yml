@@ -16,7 +16,7 @@ jobs:
       matrix:
         # MoonBit's installer only supports arm64 on macOS, so only that target is built.
         include:
-          - os: macos-14
+          - os: macos-15
             arch: arm64
             target: darwin-arm64
 

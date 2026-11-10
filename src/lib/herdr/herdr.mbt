@@ -167,14 +167,52 @@ pub fn parse_workspace_list(
 }
 
 ///|
-/// Find the workspace whose label exactly equals `label`.
+/// Whether a workspace label denotes the task `name`: either exactly, or with
+/// a user-added prefix such as `(Validation)name` or `WIP: name`. The
+/// character before the name must not be one that could belong to another
+/// task name, so `repo__aim-2098` does not match `other-repo__aim-2098` and
+/// `repo__aim-209` does not match `repo__aim-2098`.
+pub fn label_matches(label : String, name : String) -> Bool {
+  if label == name {
+    return true
+  }
+  if !label.has_suffix(name) || label.length() <= name.length() {
+    return false
+  }
+  let before = label[label.length() - name.length() - 1].to_int()
+  !is_name_char(before)
+}
+
+///|
+/// `c` is a UTF-16 code unit; task names are ASCII so this is enough.
+fn is_name_char(c : Int) -> Bool {
+  (c >= 'a'.to_int() && c <= 'z'.to_int()) ||
+  (c >= 'A'.to_int() && c <= 'Z'.to_int()) ||
+  (c >= '0'.to_int() && c <= '9'.to_int()) ||
+  c == '_'.to_int() ||
+  c == '-'.to_int() ||
+  c == '.'.to_int()
+}
+
+///|
+/// Find the workspace for task `label` (the `<repo>__<branch>` name): the
+/// single workspace whose label is the name or ends with it (see
+/// `label_matches`). Several candidates, for example a renamed workspace next
+/// to a duplicate, are an error listing their ids so nothing is closed by
+/// guesswork.
 pub fn find_workspace_id(
   entries : Array[WorkspaceEntry],
   label~ : String,
-) -> String? {
-  match entries.iter().find_first(fn(e) { e.label == label }) {
-    Some(e) => Some(e.workspace_id)
-    None => None
+) -> Result[String?, String] {
+  let candidates = entries.filter(fn(e) { label_matches(e.label, label) })
+  match candidates.length() {
+    0 => Ok(None)
+    1 => Ok(Some(candidates[0].workspace_id))
+    _ =>
+      Err(
+        "several workspaces look like \{label}: " +
+        candidates.map(fn(e) { e.workspace_id + " (" + e.label + ")" }).join(", "),
+      )
   }
 }
 

@@ -134,14 +134,64 @@ test "parse_workspace_list: invalid JSON is an error" {
 }
 
 ///|
-test "find_workspace_id: exact match only" {
+test "find_workspace_id: similar names do not collide" {
   let entries = [
-    @herdr.WorkspaceEntry::{ workspace_id: "w1", label: "repo__main", },
-    @herdr.WorkspaceEntry::{ workspace_id: "w2", label: "repo__main2", },
+    @herdr.WorkspaceEntry::{ workspace_id: "w1", label: "repo__main" },
+    @herdr.WorkspaceEntry::{ workspace_id: "w2", label: "repo__main2" },
   ]
-  assert_eq(@herdr.find_workspace_id(entries, label="repo__main2"), Some("w2"))
-  assert_eq(@herdr.find_workspace_id(entries, label="repo__main"), Some("w1"))
-  assert_eq(@herdr.find_workspace_id(entries, label="repo__dev"), None)
+  assert_eq(@herdr.find_workspace_id(entries, label="repo__main2"), Ok(Some("w2")))
+  assert_eq(@herdr.find_workspace_id(entries, label="repo__main"), Ok(Some("w1")))
+  assert_eq(@herdr.find_workspace_id(entries, label="repo__dev"), Ok(None))
+}
+
+///|
+test "find_workspace_id: a renamed label with a prefix still matches" {
+  let entries = [
+    @herdr.WorkspaceEntry::{ workspace_id: "w1", label: "(Validation)magna__aim-2098" },
+    @herdr.WorkspaceEntry::{ workspace_id: "w2", label: "WIP: magna__aim-209" },
+    @herdr.WorkspaceEntry::{ workspace_id: "w3", label: "other-magna__aim-2098" },
+    @herdr.WorkspaceEntry::{ workspace_id: "w4", label: "magna" },
+  ]
+  assert_eq(@herdr.find_workspace_id(entries, label="magna__aim-2098"), Ok(Some("w1")))
+  assert_eq(@herdr.find_workspace_id(entries, label="magna__aim-209"), Ok(Some("w2")))
+  assert_eq(@herdr.find_workspace_id(entries, label="magna__aim-20"), Ok(None))
+}
+
+///|
+test "find_workspace_id: several candidates are an error" {
+  let entries = [
+    @herdr.WorkspaceEntry::{ workspace_id: "w1", label: "(a) repo__x" },
+    @herdr.WorkspaceEntry::{ workspace_id: "w2", label: "(b) repo__x" },
+  ]
+  match @herdr.find_workspace_id(entries, label="repo__x") {
+    Err(e) => {
+      assert_true(e.contains("w1"))
+      assert_true(e.contains("w2"))
+    }
+    Ok(_) => fail("expected Err")
+  }
+  // An exact label next to a renamed one is ambiguous too (a duplicate left
+  // by the old exact-match lookup must not be closed in place of the original).
+  let pair = [
+    @herdr.WorkspaceEntry::{ workspace_id: "w1", label: "(Validation)repo__x" },
+    @herdr.WorkspaceEntry::{ workspace_id: "w2", label: "repo__x" },
+  ]
+  assert_true(@herdr.find_workspace_id(pair, label="repo__x") is Err(_))
+}
+
+///|
+test "label_matches boundary rules" {
+  assert_true(@herdr.label_matches("repo__x", "repo__x"))
+  assert_true(@herdr.label_matches("(Validation)repo__x", "repo__x"))
+  assert_true(@herdr.label_matches("WIP: repo__x", "repo__x"))
+  assert_false(@herdr.label_matches("other-repo__x", "repo__x"))
+  assert_false(@herdr.label_matches("repo__x2", "repo__x"))
+  assert_false(@herdr.label_matches("v1.repo__x", "repo__x"))
+  assert_false(@herdr.label_matches("v2_repo__x", "repo__x"))
+  assert_false(@herdr.label_matches("WIP-repo__x", "repo__x"))
+  assert_true(@herdr.label_matches("WIP repo__x", "repo__x"))
+  assert_true(@herdr.label_matches("[review]repo__x", "repo__x"))
+  assert_false(@herdr.label_matches("repo", "repo__x"))
 }
 
 ///|

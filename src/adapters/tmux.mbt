@@ -112,8 +112,11 @@ impl @ports.WorkspaceManager for TmuxWorkspace with is_current(self, name~) {
 /// Kill the task's window shortly after this process exits.
 impl @ports.WorkspaceManager for TmuxWorkspace with close_later(self, name~) {
   let _ = self
-  if !in_tmux() || !tmux_list_windows().contains(name) {
-    return Ok(false)
+  if !in_tmux() {
+    return Ok(Unavailable("not inside tmux"))
+  }
+  if !tmux_list_windows().contains(name) {
+    return Ok(NotFound)
   }
   let script = @shell.detached_after(
     @shell.CLOSE_DELAY_SECONDS,
@@ -123,7 +126,7 @@ impl @ports.WorkspaceManager for TmuxWorkspace with close_later(self, name~) {
   if status != 0 {
     return Err("failed to schedule window close")
   }
-  Ok(true)
+  Ok(Closed)
 }
 
 ///|
@@ -131,13 +134,13 @@ impl @ports.WorkspaceManager for TmuxWorkspace with close_later(self, name~) {
 impl @ports.WorkspaceManager for TmuxWorkspace with close(self, name~) {
   let _ = self
   if !in_tmux() {
-    return Ok(false)
+    return Ok(Unavailable("not inside tmux"))
   }
   if !tmux_list_windows().contains(name) {
-    return Ok(false)
+    return Ok(NotFound)
   }
   match tmux_run(["kill-window", "-t", name]) {
-    Ok(_) => Ok(true)
+    Ok(_) => Ok(Closed)
     Err(e) => Err(e)
   }
 }
